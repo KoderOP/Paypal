@@ -1,0 +1,111 @@
+import {
+  ArrowLeftRight, Bot, FlaskConical, LayoutDashboard, Menu, Settings, ShieldAlert, Sparkles, UploadCloud, UserRound, Wallet, X,
+} from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { useDataStatus } from '../../context/DataStatus'
+
+export const NAV = [
+  { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/paypal', label: 'PayPal', icon: Wallet, paypal: true },
+  { to: '/twin', label: 'My Financial Twin', icon: UserRound },
+  { to: '/simulator', label: 'What-if Simulator', icon: FlaskConical, highlight: true },
+  { to: '/assistant', label: 'AI Financial Assistant', icon: Bot, soon: true },
+  { to: '/stress', label: 'Stress Testing', icon: ShieldAlert, soon: true },
+  { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
+  { to: '/settings', label: 'Settings', icon: Settings },
+]
+
+function Logo() {
+  return (
+    <div className="flex items-center gap-2.5 px-2">
+      <svg viewBox="0 0 32 32" className="h-8 w-8" aria-hidden>
+        <rect width="32" height="32" rx="9" fill="#0b1b3a" />
+        <path d="M8 21l5-6 4 3 7-9" fill="none" stroke="#34d399" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div>
+        <p className="text-[15px] font-bold tracking-[0.08em] text-navy-900">FINORA</p>
+        <p className="-mt-0.5 text-[10px] font-medium text-navy-400">Financial Digital Twin</p>
+      </div>
+    </div>
+  )
+}
+
+function Nav({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <nav className="mt-8 space-y-0.5" aria-label="Main">
+      {NAV.map(({ to, label, icon: Icon, soon, highlight, paypal }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/'}
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `group flex items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] font-medium transition ${
+              isActive ? 'bg-navy-900 text-white shadow-sm' : 'text-navy-700 hover:bg-slate-100'
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Icon className={`h-4 w-4 ${isActive ? (paypal ? 'text-sky-300' : 'text-brand-500') : paypal ? 'text-[#003087]' : 'text-navy-400 group-hover:text-navy-700'}`} />
+              <span className="flex-1">{label}</span>
+              {paypal && !isActive && <span className="rounded bg-[#003087] px-1.5 text-[10px] font-semibold text-white">Core</span>}
+              {highlight && !isActive && <Sparkles className="h-3.5 w-3.5 text-brand-500" />}
+              {soon && <span className={`text-[10px] ${isActive ? 'text-slate-300' : 'text-navy-400'}`}>Soon</span>}
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
+
+function DataCta({ onNavigate }: { onNavigate?: () => void }) {
+  const { status } = useDataStatus()
+  return (
+    <div className="mt-auto rounded-xl bg-gradient-to-br from-navy-900 to-navy-800 p-4 text-white">
+      <p className="text-xs font-semibold text-brand-500">{status?.has_data ? `${status.transaction_count} transactions in your twin` : 'No data yet'}</p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-300">Connect PayPal or upload a statement to keep your twin current.</p>
+      <Link to="/get-started" onClick={onNavigate} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/20">
+        <UploadCloud className="h-3.5 w-3.5" /> {status?.has_data ? 'Add or replace data' : 'Add your data'}
+      </Link>
+    </div>
+  )
+}
+
+export function AppLayout({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  return (
+    <div className="min-h-screen">
+      <aside className="fixed inset-y-0 left-0 hidden w-[272px] flex-col border-r border-slate-200/80 bg-white px-4 py-6 lg:flex">
+        <Logo />
+        <Nav />
+        <DataCta />
+      </aside>
+
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+        <Logo />
+        <button onClick={() => setOpen(true)} aria-label="Open menu" className="rounded-lg p-2 hover:bg-slate-100"><Menu className="h-5 w-5" /></button>
+      </div>
+      {open && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0 bg-navy-950/30" onClick={() => setOpen(false)} />
+          <div className="absolute inset-y-0 left-0 w-72 bg-white px-4 py-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <Logo />
+              <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+            <Nav onNavigate={() => setOpen(false)} />
+            <div className="mt-6"><DataCta onNavigate={() => setOpen(false)} /></div>
+          </div>
+        </div>
+      )}
+
+      <main key={pathname} className="animate-fade-up px-4 py-6 sm:px-6 lg:ml-[272px] lg:px-10 lg:py-9">
+        <div className="mx-auto max-w-[1280px]">{children}</div>
+      </main>
+    </div>
+  )
+}
