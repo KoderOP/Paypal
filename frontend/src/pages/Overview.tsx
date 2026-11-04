@@ -11,7 +11,7 @@ import { StatCard } from '../components/ui/StatCard'
 import { StatusPill } from '../components/ui/StatusPill'
 import { useApi } from '../hooks/useApi'
 import { api } from '../lib/api'
-import { daysBetween, fmtDate, fmtShort, greeting, inr, pct, signedInr } from '../lib/format'
+import { daysBetween, fmtDate, fmtShort, greeting, inr, pct, recurringOrigin, signedInr } from '../lib/format'
 import type { Dashboard, HealthIndicator } from '../lib/types'
 
 export default function Overview() {
@@ -165,13 +165,13 @@ function SubscriptionsCard({ data }: { data: Dashboard }) {
   const subs = data.recurring.filter((r) => r.kind === 'subscription')
   return (
     <Card>
-      <CardHeader title="Recurring subscriptions" subtitle={`${subs.length} detected · ${inr(data.kpis.subscriptions_monthly)}/month`} icon={<Repeat className="h-4 w-4" />} />
+      <CardHeader title="Recurring subscriptions" subtitle={`${subs.length} active · ${inr(data.kpis.subscriptions_monthly)}/month`} icon={<Repeat className="h-4 w-4" />} />
       <ul className="divide-y divide-slate-100">
         {subs.map((s) => (
           <li key={s.key} className="flex items-center justify-between py-2.5 first:pt-0">
             <div>
               <p className="text-sm text-navy-800">{s.merchant}</p>
-              <p className="text-[11px] text-navy-400">Renews {fmtShort(s.next_date)} · seen {s.occurrences}×</p>
+              <p className="text-[11px] text-navy-400">Renews {fmtShort(s.next_date)} · {recurringOrigin(s)}</p>
             </div>
             <span className="tabular text-sm font-medium text-navy-900">{inr(s.amount)}</span>
           </li>

@@ -138,3 +138,102 @@ class ImportResult(BaseModel):
 class PayPalSyncRequest(BaseModel):
     days: int = Field(180, ge=1, le=1095)
     replace: bool = False
+
+
+# ---- Buy now / wait / split + goal solver -----------------------------------------------------------
+class PayLaterPlanIn(BaseModel):
+    id: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9_]+$")
+    name: str = Field(min_length=1, max_length=60)
+    instalments: int = Field(ge=2, le=48)
+    interval_days: int | None = Field(None, ge=7, le=31)
+    interval_months: int | None = Field(None, ge=1, le=3)
+    first_payment_now: bool = True
+    apr: Money = Field(Decimal("0"), ge=0, le=Decimal("60"))
+
+
+class PaymentOptionsRequest(BaseModel):
+    amount: Money = Field(Decimal("75000"), gt=0, le=Decimal("100000000"))
+    label: str = Field("Laptop purchase", min_length=1, max_length=80)
+    safety_buffer: Money | None = Field(None, ge=0)
+    plans: list[PayLaterPlanIn] | None = Field(None, max_length=4, description="Omit for the default Pay Later plans")
+
+
+class AffordabilityRequest(BaseModel):
+    amount: Money | None = Field(None, gt=0, le=Decimal("100000000"), description="Find the earliest safe date for this")
+    search_days: int = Field(60, ge=7, le=180)
+    safety_buffer: Money | None = Field(None, ge=0)
+
+
+class ScenarioRequest(BaseModel):
+    title: str | None = Field(None, max_length=120)
+    changes: list[dict] = Field(min_length=1, max_length=8)
+    safety_buffer: Money | None = Field(None, ge=0)
+
+
+# ---- PayPal checkout (Orders API) ---------------------------------------------------------------------
+class CheckoutCreate(BaseModel):
+    amount: Money = Field(gt=0, le=Decimal("100000000"))
+    label: str = Field(min_length=1, max_length=80)
+    option_id: str = Field(min_length=1, max_length=40)
+    acknowledged: bool = Field(description="User confirmed they reviewed the simulated impact")
+    safety_buffer: Money | None = Field(None, ge=0)
+    plans: list[PayLaterPlanIn] | None = Field(None, max_length=4)
+
+
+class CheckoutConfirm(BaseModel):
+    confirm: bool
+
+
+class CheckoutOut(BaseModel):
+    id: int
+    paypal_order_id: str | None
+    option_id: str
+    funding: str
+    label: str
+    amount: Money
+    currency: str
+    status: str
+    approve_url: str | None
+    capture_id: str | None
+    snapshot: dict
+    error: str | None
+    environment: str
+
+
+class PlanPurchase(BaseModel):
+    amount: Money = Field(gt=0, le=Decimal("100000000"))
+    label: str = Field(min_length=1, max_length=80)
+    on: date
+
+
+# ---- Subscriptions ---------------------------------------------------------------------------------------
+class SubscriptionLink(BaseModel):
+    paypal_subscription_id: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
+    recurring_key: str | None = Field(None, max_length=160)
+
+
+class SubscriptionAction(BaseModel):
+    confirm: bool
+    reason: str = Field("Cancelled from FINORA after simulating the savings", min_length=1, max_length=128)
+
+
+class SubscriptionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    amount: Money = Field(gt=0, le=Decimal("10000000"), description="Monthly price")
+    next_billing_date: date
+    category: str = Field("Subscriptions", min_length=1, max_length=60)
+
+
+class RecurringToggle(BaseModel):
+    recurring_key: str = Field(min_length=1, max_length=160)
+    cancelled: bool
+
+
+# ---- Assistant -----------------------------------------------------------------------------------------
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=20)

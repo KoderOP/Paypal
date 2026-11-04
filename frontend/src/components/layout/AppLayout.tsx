@@ -1,8 +1,10 @@
 import {
-  ArrowLeftRight, Bot, FlaskConical, LayoutDashboard, Menu, Settings, ShieldAlert, Sparkles, UploadCloud, UserRound, Wallet, X,
+  ArrowLeftRight, Bot, FlaskConical, LayoutDashboard, LogIn, LogOut, Menu, Repeat, Settings, ShieldAlert, Sparkles,
+  UploadCloud, UserRound, Wallet, X,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/Auth'
 import { useDataStatus } from '../../context/DataStatus'
 
 export const NAV = [
@@ -10,7 +12,8 @@ export const NAV = [
   { to: '/paypal', label: 'PayPal', icon: Wallet, paypal: true },
   { to: '/twin', label: 'My Financial Twin', icon: UserRound },
   { to: '/simulator', label: 'What-if Simulator', icon: FlaskConical, highlight: true },
-  { to: '/assistant', label: 'AI Financial Assistant', icon: Bot, soon: true },
+  { to: '/assistant', label: 'AI Financial Assistant', icon: Bot, highlight: true },
+  { to: '/subscriptions', label: 'Subscriptions', icon: Repeat },
   { to: '/stress', label: 'Stress Testing', icon: ShieldAlert, soon: true },
   { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -61,6 +64,31 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+function Account({ onNavigate }: { onNavigate?: () => void }) {
+  const { auth, signOut } = useAuth()
+  if (!auth) return null
+  if (auth.authenticated && auth.identity) {
+    const initials = (auth.identity.name || auth.identity.email || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+    return (
+      <div className="mt-3 flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#003087] text-xs font-semibold text-white" aria-hidden>{initials}</span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-medium text-navy-900">{auth.identity.name || 'PayPal user'}</p>
+          <p className="truncate text-[11px] text-navy-400">{auth.identity.email ?? 'Signed in with PayPal'}</p>
+        </div>
+        <button onClick={() => void signOut()} aria-label="Sign out" title="Sign out" className="rounded-lg p-1.5 text-navy-400 hover:bg-slate-100 hover:text-navy-900">
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+    )
+  }
+  return (
+    <Link to="/signin" onClick={onNavigate} className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-[13px] font-semibold text-[#003087] hover:bg-slate-50">
+      <LogIn className="h-4 w-4" /> Sign in with PayPal
+    </Link>
+  )
+}
+
 function DataCta({ onNavigate }: { onNavigate?: () => void }) {
   const { status } = useDataStatus()
   return (
@@ -83,6 +111,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Logo />
         <Nav />
         <DataCta />
+        <Account />
       </aside>
 
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
@@ -98,7 +127,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
             </div>
             <Nav onNavigate={() => setOpen(false)} />
-            <div className="mt-6"><DataCta onNavigate={() => setOpen(false)} /></div>
+            <div className="mt-6"><DataCta onNavigate={() => setOpen(false)} /><Account onNavigate={() => setOpen(false)} /></div>
           </div>
         </div>
       )}

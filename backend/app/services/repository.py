@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.money import ZERO, money
-from app.data.models import Account, Obligation, Transaction, User
-from app.engine.twin import FinancialProfile, build_profile
+from app.data.models import AddedSubscription, Account, LinkedSubscription, Obligation, Transaction, User
+from app.engine.twin import FinancialProfile, RecurringItem, build_profile, with_added, without_cancelled
 from app.engine.types import Assumptions, ObligationIn, Txn
 
 
@@ -61,11 +61,59 @@ def assumptions_for(user: User, **overrides) -> Assumptions:
     return Assumptions(**base)
 
 
-def build_user_profile(db: Session, user: User, a: Assumptions, as_of: date | None = None) -> FinancialProfile:
+def cancelled_keys(user: User) -> set[str]:
+    """Recurring items the user cancelled (through the PayPal Subscriptions API or marked manually)."""
+    return set(((user.preferences or {}).get("cancelled_recurring") or {}).keys())
+
+
+def set_cancelled(user: User, key: str, info: dict | None) -> None:
+    prefs = dict(user.preferences or {})
+    cancelled = dict(prefs.get("cancelled_recurring") or {})
+    if info is None:
+        cancelled.pop(key, None)
+    else:
+        cancelled[key] = info
+    prefs["cancelled_recurring"] = cancelled
+    user.preferences = prefs
+
+
+def added_key(sub: AddedSubscription) -> str:
+    return f"manual:{sub.id}"
+
+
+def paypal_key(sub: LinkedSubscription) -> str:
+    return f"paypal:{sub.paypal_subscription_id}"
+
+
+def added_items(db: Session, user: User) -> list[RecurringItem]:
+    """Subscriptions not learned from history: added by hand, or linked from PayPal without a match."""
+    items: list[RecurringItem] = []
+    for s in db.scalars(select(AddedSubscription).where(AddedSubscription.user_id == user.id)).all():
+        items.append(RecurringItem(
+            key=added_key(s), name=s.name, merchant=s.name, category=s.category, kind="subscription", direction="out",
+            amount=money(s.amount), day_of_month=s.next_billing_date.day, occurrences=0, last_date=None,
+            next_date=s.next_billing_date, source="manual"))
+    linked = db.scalars(select(LinkedSubscription).where(LinkedSubscription.user_id == user.id,
+                                                         LinkedSubscription.recurring_key.is_(None))).all()
+    for s in linked:
+        # Only project what PayPal told us, in the profile currency; never guess a price or a date.
+        if s.amount is None or s.next_billing_date is None or (s.currency and s.currency != user.currency):
+            continue
+        items.append(RecurringItem(
+            key=paypal_key(s), name=s.name, merchant=s.name, category="Subscriptions", kind="subscription",
+            direction="out", amount=money(s.amount), day_of_month=s.next_billing_date.day, occurrences=0,
+            last_date=None, next_date=s.next_billing_date, source="paypal"))
+    return items
+
+
+def build_user_profile(db: Session, user: User, a: Assumptions, as_of: date | None = None,
+                       include_cancelled: bool = False) -> FinancialProfile:
     txns = load_transactions(db, user)
     if not txns:
         raise HTTPException(status_code=404, detail=NO_DATA)
-    return build_profile(txns, current_balance(db, user), as_of or today(), load_obligations(db, user), a)
+    profile = build_profile(txns, current_balance(db, user), as_of or today(), load_obligations(db, user), a)
+    profile = with_added(profile, added_items(db, user))
+    return profile if include_cancelled else without_cancelled(profile, cancelled_keys(user))
 
 
 def balance_history(db: Session, user: User, txns: list[Txn], as_of: date) -> list[dict]:

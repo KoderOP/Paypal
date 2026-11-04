@@ -45,6 +45,7 @@ class CashEvent(BaseModel):
     label: str
     category: str
     kind: EventKind
+    ref: str | None = None  # recurring-item key this event was projected from (lets scenarios target it)
 
 
 def add_months(d: date, months: int, day: int | None = None) -> date:

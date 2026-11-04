@@ -37,8 +37,10 @@ class RecurringItem(BaseModel):
     amount: Money
     day_of_month: int
     occurrences: int
-    last_date: date
+    last_date: date | None  # None for items added by the user or from PayPal before any payment is seen
     next_date: date
+    # detected = learned from transactions · manual = added by the user · paypal = PayPal Subscriptions API
+    source: Literal["detected", "manual", "paypal"] = "detected"
 
 
 class CategorySpend(BaseModel):
@@ -140,6 +142,52 @@ def detect_recurring(txns: list[Txn], as_of: date) -> list[RecurringItem]:
         )
     items.sort(key=lambda i: (i.direction != "in", -i.amount))
     return items
+
+
+def merchant_key(merchant: str) -> str:
+    """The key a detected outflow from this merchant gets, used to spot duplicates of added items."""
+    return f"out:{_norm(merchant)}"
+
+
+def with_added(profile: "FinancialProfile", added: list[RecurringItem]) -> "FinancialProfile":
+    """Merge recurring outflows the user added (or that come from PayPal) into the twin.
+
+    An added item whose merchant is already *detected* from transactions is skipped: once real
+    payments appear in the history, the detected item takes over, so nothing is counted twice.
+    Next dates in the past roll forward to the next occurrence on or after `as_of`.
+    """
+    detected = {r.key for r in profile.recurring_outflows}
+    fresh: list[RecurringItem] = []
+    for item in added:
+        if merchant_key(item.merchant) in detected or item.key in detected:
+            continue
+        nxt = item.next_date
+        while nxt < profile.as_of:
+            nxt = add_months(nxt, 1, item.day_of_month)
+        fresh.append(item.model_copy(update={"next_date": nxt}))
+    if not fresh:
+        return profile
+    outs = profile.recurring_outflows + fresh
+    return profile.model_copy(update={
+        "recurring_outflows": outs,
+        "recurring_outflow_monthly": total(r.amount for r in outs),
+        "subscriptions_monthly": total(r.amount for r in outs if r.kind == "subscription"),
+    })
+
+
+def without_cancelled(profile: "FinancialProfile", cancelled_keys: set[str]) -> "FinancialProfile":
+    """Drop recurring outflows the user has cancelled (via PayPal or manually) from future projections.
+
+    History is untouched; only what the twin *expects* to happen changes. Totals are recomputed.
+    """
+    keep = [r for r in profile.recurring_outflows if r.key not in cancelled_keys]
+    if len(keep) == len(profile.recurring_outflows):
+        return profile
+    return profile.model_copy(update={
+        "recurring_outflows": keep,
+        "recurring_outflow_monthly": total(r.amount for r in keep),
+        "subscriptions_monthly": total(r.amount for r in keep if r.kind == "subscription"),
+    })
 
 
 def _month_summaries(txns: list[Txn], as_of: date) -> list[MonthSummary]:

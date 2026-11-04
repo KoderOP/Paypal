@@ -15,7 +15,8 @@ const FLOW = [
   { icon: KeyRound, title: 'Connect', text: 'OAuth 2.0 client credentials. Secrets stay on the server; the browser never sees them.' },
   { icon: RefreshCw, title: 'Sync', text: 'Read-only Transaction Search API, fetched in 31-day windows — or an uploaded Activity report.' },
   { icon: Brain, title: 'Learn', text: 'Transactions are normalised and the twin detects income, recurring payments and habits.' },
-  { icon: FlaskConical, title: 'Simulate', text: 'A deterministic engine projects 90 days and tests decisions before you spend.' },
+  { icon: FlaskConical, title: 'Simulate', text: 'A deterministic engine projects 90 days and compares paying now, waiting or PayPal Pay Later.' },
+  { icon: ShieldCheck, title: 'Act', text: 'Pay with PayPal (Orders API) or cancel a subscription (Subscriptions API), each only after you confirm.' },
 ]
 
 export default function PayPal() {
@@ -59,7 +60,7 @@ export default function PayPal() {
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{d.configured ? `REST API connected · ${d.environment}` : 'REST API not configured'}</span>
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{d.linked ? `${d.transaction_count} PayPal transactions in your twin` : 'No PayPal data yet'}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Read-only access</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Read-only sync · confirmed checkout</span>
             </div>
           </div>
           <div className="flex flex-col gap-2">
@@ -120,7 +121,7 @@ export default function PayPal() {
 
       <Card className="mt-6">
         <CardHeader title="How the PayPal integration works" />
-        <ol className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <ol className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5">
           {FLOW.map((f, i) => (
             <li key={f.title} className="relative rounded-xl bg-slate-50 p-4">
               <span className="absolute right-3 top-3 text-[11px] font-semibold text-navy-400">0{i + 1}</span>
@@ -136,9 +137,10 @@ export default function PayPal() {
         <Card>
           <CardHeader title="Trust & safety" icon={<ShieldCheck className="h-4 w-4" />} />
           <ul className="space-y-2 text-[13px] text-navy-600">
-            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Read-only scope — FINORA cannot move money.</li>
+            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Syncing is read-only. Money moves only through checkout, after two explicit confirmations: once before PayPal and again after you approve.</li>
             <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Credentials live only in the server environment.</li>
-            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Any future payment action requires your explicit confirmation.</li>
+            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Subscription cancel, suspend and re-activate each ask you to confirm first.</li>
+            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Sign in with PayPal is optional. Every feature works without it.</li>
             <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Duplicate-safe: re-syncs are matched on PayPal transaction ID.</li>
           </ul>
         </Card>

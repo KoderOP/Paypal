@@ -38,4 +38,8 @@ export function greeting(): string {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
 }
 
+/** Where a recurring item came from, for small captions: "seen 6×", "added by you", "from PayPal". */
+export const recurringOrigin = (r: { source?: 'detected' | 'manual' | 'paypal'; occurrences: number }) =>
+  r.source === 'manual' ? 'added by you' : r.source === 'paypal' ? 'from PayPal' : `seen ${r.occurrences}×`
+
 export const titleCase = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())

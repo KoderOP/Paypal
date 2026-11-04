@@ -1,6 +1,8 @@
 import type {
-  Dashboard, DemoFile, FileFormat, ImportResult, Obligation, ObligationCreate, PayPalOverview, PurchaseRequest,
-  PurchaseSimulation, ScenarioInfo, SettingsData, StatusData, TransactionPage, TwinData,
+  AddedSubscription, Affordability, AssistantStatus, SubscriptionInput, AuthState, ChatResponse, ChatTurn, CheckoutOrder, Dashboard, DemoFile, FileFormat,
+  ImportResult, LinkedSubscription, Obligation, ObligationCreate, PaymentComparison, PayPalOverview, PurchaseRequest,
+  PurchaseSimulation, ScenarioChange, ScenarioInfo, ScenarioResult, SettingsData, StatusData, SubscriptionsOverview,
+  TransactionPage, TwinData,
 } from './types'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
@@ -85,4 +87,43 @@ export const api = {
   simulatePurchase: (body: PurchaseRequest) => request<PurchaseSimulation>('/simulations/purchase', json('POST', body)),
   settings: () => request<SettingsData>('/settings'),
   updateSettings: (patch: { name?: string; safety_buffer?: number }) => request<SettingsData>('/settings', json('PUT', patch)),
+
+  // Buy now / wait / split, goal solver, scenarios
+  paymentOptions: (body: { amount: number; label: string; safety_buffer?: number }) =>
+    request<PaymentComparison>('/simulations/payment-options', json('POST', body)),
+  affordability: (body: { amount?: number; search_days?: number; safety_buffer?: number }) =>
+    request<Affordability>('/simulations/affordability', json('POST', body)),
+  scenario: (changes: ScenarioChange[], title?: string) => request<ScenarioResult>('/simulations/scenario', json('POST', { changes, title })),
+
+  // PayPal checkout (Orders API) — two explicit confirmations
+  startCheckout: (body: { amount: number; label: string; option_id: string; acknowledged: boolean; safety_buffer?: number }) =>
+    request<CheckoutOrder>('/checkout/orders', json('POST', body)),
+  checkoutOrder: (id: number) => request<CheckoutOrder>(`/checkout/orders/${id}`),
+  checkoutOrders: () => request<CheckoutOrder[]>('/checkout/orders'),
+  captureCheckout: (id: number) => request<CheckoutOrder>(`/checkout/orders/${id}/capture`, json('POST', { confirm: true })),
+  cancelCheckout: (id: number) => request<CheckoutOrder>(`/checkout/orders/${id}/cancel`, json('POST', {})),
+  planPurchase: (body: { amount: number; label: string; on: string }) => request<Obligation>('/checkout/plan', json('POST', body)),
+
+  // Subscriptions
+  subscriptions: () => request<SubscriptionsOverview>('/subscriptions'),
+  addSubscription: (body: SubscriptionInput) => request<AddedSubscription>('/subscriptions/added', json('POST', body)),
+  editSubscription: (id: number, body: SubscriptionInput) => request<AddedSubscription>(`/subscriptions/added/${id}`, json('PUT', body)),
+  removeSubscription: (id: number) => request<void>(`/subscriptions/added/${id}`, { method: 'DELETE' }),
+  linkSubscription: (paypal_subscription_id: string, recurring_key?: string) =>
+    request<LinkedSubscription>('/subscriptions/link', json('POST', { paypal_subscription_id, recurring_key })),
+  refreshSubscription: (id: number) => request<LinkedSubscription>(`/subscriptions/${id}/refresh`, json('POST', {})),
+  subscriptionAction: (id: number, action: 'cancel' | 'suspend' | 'activate') =>
+    request<LinkedSubscription>(`/subscriptions/${id}/${action}`, json('POST', { confirm: true })),
+  unlinkSubscription: (id: number) => request<void>(`/subscriptions/${id}`, { method: 'DELETE' }),
+  markSubscription: (recurring_key: string, cancelled: boolean) =>
+    request<{ recurring_key: string; cancelled: boolean }>('/subscriptions/mark', json('POST', { recurring_key, cancelled })),
+
+  // Optional Sign in with PayPal (login is a full-page redirect, not a fetch)
+  me: () => request<AuthState>('/auth/me'),
+  loginUrl: `${BASE}/api/auth/paypal/login`,
+  logout: () => request<void>('/auth/logout', { method: 'POST' }),
+
+  // Assistant
+  assistantStatus: () => request<AssistantStatus>('/assistant/status'),
+  chat: (messages: ChatTurn[]) => request<ChatResponse>('/assistant/chat', json('POST', { messages })),
 }

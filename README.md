@@ -11,9 +11,24 @@ Built for the PayPal AI Hackathon. **PayPal is the primary data source.** You ca
 read-only PayPal Transaction Search API or upload a PayPal Activity report. Bank statements and plain
 transaction files are also supported.
 
-**MVP scope:** an upload-first onboarding flow with live analysis, the dashboard, the digital twin, a
-90-day deterministic forecast, a PayPal hub, and a fully working purchase simulator with timing
-optimisation.
+**Scope:** an upload-first onboarding flow with live analysis, the dashboard, the digital twin, a
+90-day deterministic forecast, a PayPal hub, and a purchase simulator with timing optimisation. On top of that:
+
+- **Buy now, wait, or split it?** Compares paying in full today, waiting for a safe date and PayPal Pay Later
+  instalments, each as its own cash-flow line. It then checks out through the **PayPal Orders API**, with two
+  explicit confirmations.
+- **Goal solver** works backwards. *"What's the most I can spend this month?"* and *"When's the earliest safe date
+  to buy?"* are both answered exactly, not by search.
+- **Composable what-ifs:** cancel subscriptions, delayed income, more savings, spending changes, unexpected
+  payments. Any combination stacks into one scenario.
+- **Subscriptions** are detected from history, **added by hand** (e.g. one you just started), or linked from the
+  **PayPal Subscriptions API**. A linked PayPal subscription with no history is projected from PayPal's own price
+  and next billing date. Linked ones can be cancelled, suspended or re-activated, and cancelled items drop out of
+  every forecast. Once real payments to an added merchant appear, the detected item takes over, so nothing is
+  counted twice. *"What if I subscribe?"* can be simulated before adding.
+- **AI assistant:** the language model only picks which engine tool to run. A guardrail rejects any rupee figure the
+  engine didn't produce. Without an API key, a deterministic parser answers the same questions.
+- **Sign in with PayPal** (OpenID Connect) is optional and open to any PayPal account. No feature requires it.
 
 ---
 
@@ -52,7 +67,7 @@ docker compose up --build      # db (Postgres 16) + backend + frontend
 ### Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q    # 31 tests: engine, parsers, PayPal API mapping, API
+cd backend && .venv/bin/python -m pytest -q    # 82 tests: engine, planning, parsers, PayPal APIs (mocked), assistant, API
 cd frontend && npx tsc -b && npm run build      # type-check + production build
 ```
 
@@ -174,6 +189,19 @@ All endpoints are prefixed with `/api`. Interactive docs are at `http://localhos
 | DELETE | `/obligations/{id}` | Remove an obligation |
 | GET | `/simulations/scenarios` | Scenario catalogue (available / planned) |
 | POST | `/simulations/purchase` | `{amount, purchase_date?, label, safety_buffer?}` → baseline vs scenario, 30/60/90-day impact, risks, timing options, recommendation |
+| POST | `/simulations/payment-options` | `{amount, label, plans?}` → pay now / wait / Pay Later options, each with a balance series, cost, low point and safe flag, plus a recommendation |
+| GET | `/simulations/pay-later-plans` | Default (illustrative) Pay Later terms |
+| POST | `/simulations/affordability` | `{amount?, search_days}` → most you can spend today / this month, affordability curve, earliest safe date |
+| POST | `/simulations/scenario` | `{changes: [...]}` → composable what-if (`purchase`, `add_subscription`, `cancel_subscriptions`, `income_delay`, `increase_savings`, `expense_increase`, `unexpected_payment`) |
+| POST | `/checkout/orders` | `{amount, label, option_id, acknowledged: true}` → PayPal order + approval link (simulation re-run server-side and snapshotted) |
+| GET | `/checkout/return` · `/checkout/cancel` | PayPal redirect targets → order `approved` / `cancelled` |
+| POST | `/checkout/orders/{id}/capture` | `{confirm: true}` → capture. Records a PayPal transaction (pay in full) or one obligation per instalment (Pay Later) |
+| POST | `/checkout/plan` | The "wait" option: add the purchase as a planned payment |
+| GET | `/subscriptions` | Detected, added and PayPal-linked subscriptions, totals, superseded (now-detected) added entries |
+| POST / PUT / DELETE | `/subscriptions/added` · `/subscriptions/added/{id}` | Add, edit or remove a subscription by hand: `{name, amount, next_billing_date}` |
+| POST | `/subscriptions/link` · `/{id}/refresh` · `/{id}/cancel\|suspend\|activate` · `/mark` | Subscriptions API actions (each needs `confirm: true`) and manual cancel/restore |
+| GET | `/auth/me` · `/auth/paypal/login` · `/auth/paypal/callback` · POST `/auth/logout` | Optional Sign in with PayPal |
+| GET / POST | `/assistant/status` · `/assistant/chat` | AI assistant (tool calling + figure guardrail; rule-based without a key) |
 | GET / PUT | `/settings` | Read settings / update `name` and/or `safety_buffer` |
 
 Money is computed as `Decimal` and serialised as a JSON number with 2 decimal places. The client
@@ -218,14 +246,19 @@ FINORA recommends **waiting 12 days for the salary**.
 
 ## Known limitations
 
-- **Single user, no authentication.** The API serves the first user. Auth and multi-tenancy are
-  not built yet.
-- **Only the purchase scenario is implemented.** The other five scenarios appear in the catalogue
-  as "planned"; the overlay architecture is ready for them.
-- **The AI Assistant and Stress Testing pages are placeholders.** No LLM calls are made yet.
-- **PayPal API sync is implemented but not yet verified against a live sandbox account.** It is
-  covered by mocked-HTTP tests, and it needs *Transaction Search* enabled on the REST app. Activity
-  report upload is fully working. No payments can be initiated.
+- **Single data profile.** Sign in with PayPal is optional and identifies who is using the app, but
+  everyone shares one financial profile. Per-user data (multi-tenancy) isn't built.
+- **PayPal API features are covered by mocked-HTTP tests but not yet verified against a live sandbox
+  account.** This covers Transaction Search, Orders, Subscriptions and Log in with PayPal. Activity report
+  upload works fully.
+- **Pay Later terms are illustrative inputs.** PayPal has no public API that returns a buyer's Pay Later
+  offer, so eligibility, APR and the final schedule are decided by PayPal at checkout (the buyer picks Pay
+  Later on PayPal's page). Pay Later isn't offered in every country or currency, including INR.
+- **Subscriptions API limits.** PayPal lets only the *merchant's* REST app cancel a subscription through
+  the API. For other merchants, FINORA links you to PayPal → Automatic payments and lets you mark the item
+  cancelled.
+- **The assistant's rule-based mode** understands the core what-if questions, not free-form chat. Add
+  `OPENAI_API_KEY` for that. The Stress Testing page is still a placeholder.
 - Forecasting only detects monthly recurrence (weekly or annual items count as variable spend). It
   produces a single deterministic path with no confidence bands, and irregular income is excluded.
 - `as_of` is always today. A file whose history ended long ago will detect few active recurring items.
