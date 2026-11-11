@@ -130,7 +130,26 @@ for the LLM path.
 
 **Groq (live, `openai/gpt-oss-120b`):**
 
-<!-- GROQ_TABLE -->
+Final run, commit `c4cd1f2` (agent code identical to `fced06e`, where the run started), paced to 8,000 tokens/minute:
+
+| Slice | n | Tool | Arguments | Grounded | Guardrail rewrites | Fallback to planner | p50 / p95 latency |
+|---|---|---|---|---|---|---|---|
+| Overall | 40 | 92.5% | 90.0% | 100% | 17.5% | 15.0% | 1.7 s / 12.3 s |
+| Wording the planner was written for | 26 | 100% | 100% | 100% | 15.4% | 15.4% | 1.7 s / 12.3 s |
+| Held-out paraphrases | 14 | 78.6% | 71.4% | 100% | 21.4% | 14.3% | 1.7 s / 12.3 s |
+
+**Reading it honestly.**
+- On paraphrases Groq beats the offline planner (71.4% vs 35.7% correct arguments), which is what the LLM is for.
+  On wording the planner knows, both score 100%.
+- **Every final answer was grounded (100%).** That's guaranteed by construction: a rejected draft is replaced by engine output.
+- **Fallbacks (15%)** were provider errors during the run (6 cases, clustered at the end, all multi-turn or late). The client
+  had switched to the fallback model (`openai/gpt-oss-20b` shows usage), which also failed for those cases, so the offline
+  planner answered (still correctly, where its wording allowed). Both models were healthy right after the run. This run did not
+  record the exact error per case. `agent_eval.py` now saves `note`, `rejected` and `provider_notes` for each case.
+- **Rewrites vary a lot between runs: 20%, 7.5% and 17.5%** over three full runs on the same questions. We therefore don't
+  claim the change below reliably lowered the rate. What we did verify is *why* drafts are rejected (next section).
+- p95 latency of about 12 s reflects rate-limit retries on the free tier, not model speed (p50 is 1.7 s).
+
 
 Run with `python -m evals.agent_eval --mode llm --tpm 8000`. `--tpm` paces requests to Groq's free-tier limit of 8,000 tokens per
 minute, so the results measure the agent, not the rate limiter. One question costs about 4,800 tokens (two model rounds,
@@ -150,10 +169,10 @@ output varies between runs). Both rejections that reproduced were **Groq doing i
 So the rewrites were true catches, not false alarms. The fix was on the tool side: results now include the differences people
 ask about, computed by the engine (`min_balance_change`, `end_balance_change`, `room_above_buffer_if_bought_today`,
 `lowest_projected_balance_if_bought_today`), and the prompt says to quote them rather than compute. Both questions then
-passed with correct figures. The table above is from the run after that change.
+passed with correct figures when re-asked. The table above is from a later full run. Its rewrite rate (17.5%) is within the run-to-run range, so the effect on the overall rate is not established.
 
 ## Test suite
 
-`pytest` (191 tests) covers the engine, parsers, PayPal flows (mocked HTTP and demo mode), the Groq client's retry/fallback
+`pytest` (206 tests) covers the engine, parsers, PayPal flows (mocked HTTP and demo mode), the Groq client's retry/fallback
 behaviour, the agent loop and trace, the guardrail (accept/reject cases plus regressions), the checkout-proposal tool (creates
 no order, flags unsafe options), the rate limit, and the landing demo storyline on dates across a full year.

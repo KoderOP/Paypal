@@ -83,6 +83,10 @@ def run_case(case: dict, db, user, llm_factory, pace_tpm: int = 0) -> dict:
         "guardrail": res.get("guardrail"), "mode": res["mode"], "fallback": res["mode"] == "rules" and res.get("note") is not None,
         "ms": ms, "tokens": (res.get("usage") or {}).get("prompt_tokens", 0) + (res.get("usage") or {}).get("completion_tokens", 0),
         "reply": res["reply"][:600],
+        # Why an answer fell back or was rewritten, so a run explains its own numbers.
+        "note": res.get("note"),
+        "rejected": (res.get("rejected_grounding") or {}).get("invented"),
+        "provider_notes": [n for t in res.get("trace", []) if t.get("type") == "llm" for n in (t.get("detail") or {}).get("notes", [])][:6],
     }
 
 

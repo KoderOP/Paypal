@@ -1,6 +1,6 @@
 {
   "benchmark": "guardrail_redteam",
-  "commit": "8db3212",
+  "commit": "c4cd1f2",
   "python": "3.14.2",
   "eval_today": "2026-11-03",
   "summary": {

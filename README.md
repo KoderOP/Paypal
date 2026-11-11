@@ -94,7 +94,7 @@ On clean synthetic histories the twin reaches 96.8% (seasonal naive 93.2%). Full
 |---|---|---|
 | **Guardrail red-team**: 262 seeded corrupted drafts, 154 faithful drafts | **97.7%** caught, **0%** false rejections | Flat 1% tolerance: 76.3% caught (digit swaps: 29.6% vs 100%) |
 | **Agent benchmark**: 40 questions, deterministic planner (offline) | Tool 85% · args 77.5% · **grounded 100%** | 100% on wording it was written for, 57% on held-out paraphrases |
-<!-- GROQ_ROW -->
+| **Agent benchmark: live Groq** (`openai/gpt-oss-120b`), same 40 questions on the fictional profile | Tool **92.5%** · args **90%** · **grounded 100%** · p50 1.7 s | 100% / 100% on planner-known wording, 78.6% / 71.4% on held-out paraphrases (planner: 57.1% / 35.7%). 15% fell back to the planner after provider errors; 17.5% of drafts were rewritten by the guardrail (7.5–20% across three runs) |
 
 The evaluations found and fixed four guardrail bugs, including a JSON-escaping bug that turned "₹12,469" into 912469
 and a flat tolerance that let digit transpositions through. Regression tests cover each one.
@@ -165,7 +165,7 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Demo script: [docs/DEMO
 ## Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q   # 202 tests: engine, parsers, PayPal (mocked + demo), Groq client, agent, guardrail, provenance + reconciliation, demo storyline
+cd backend && .venv/bin/python -m pytest -q   # 206 tests: engine, parsers, PayPal (mocked + demo), Groq client, agent, guardrail, provenance + reconciliation, demo storyline
 cd frontend && npm run build                  # type-check + production build
 ```
 
