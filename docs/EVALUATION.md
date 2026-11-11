@@ -1,0 +1,136 @@
+# FINORA evaluation
+
+Three questions decide whether FINORA's advice can be trusted:
+
+1. **Is the forecast good enough to make a purchase decision?** → walk-forward backtest
+2. **Does the guardrail stop an LLM from stating wrong numbers, without blocking right ones?** → red-team with ablation
+3. **Does the agent call the right tool with the right arguments?** → benchmark
+
+Everything is reproducible and seeded:
+
+```bash
+cd backend
+python -m evals.run_all              # offline: ~10 s, writes evals/results/*.json and REPORT.md
+GROQ_API_KEY=... python -m evals.run_all --llm   # adds the live Groq agent benchmark
+python -m evals.forecast_backtest --file ~/Downloads/paypal_activity.csv   # backtest on your own export (not saved)
+```
+
+The numbers below come from `evals/results/` at the commit recorded in each JSON file. The web app shows the same files at
+`/evals`.
+
+---
+
+## 1. Forecast backtest (`evals/forecast_backtest.py`)
+
+**Protocol.** For each history and each of 5 cut-off dates, the forecaster sees only transactions *before* the cut-off,
+predicts the next 30 days of daily balances, and is scored against what actually happened.
+
+**Forecasters.** `twin` is FINORA's engine, unmodified. Baselines: `flat` (balance stays put), `linear_drift` (average
+daily net flow over 90 days), and `seasonal_naive` (replay the last 30 days' daily flows). Seasonal-naive is a deliberately
+strong baseline for monthly cash flow.
+
+**Metrics.**
+- *Path MAE*: mean absolute daily balance error, also as % of monthly income.
+- *Low-point MAE*: error in the minimum balance, the number "is it safe?" depends on.
+- *Decision accuracy*: for purchases of 10%–150% of monthly income made on the cut-off day, is "stays above the ₹20,000
+  buffer" predicted correctly? *False-safe*: predicted safe but actually breached. That's the costly error.
+
+**Data.** 30 seeds × 2 personas (salaried, USD freelancer paid via PayPal) = 60 histories per condition.
+- *Clean*: the demo generator as-is.
+- *Perturbed*: income dates jittered −3…+4 days, 10% of bills skipped, one-off expenses on ~2% of days (₹2k–15k), and
+  variable spending scaled ±25% per month.
+
+**Results** (60 histories × 5 cut-offs = 300 forecasts per model and condition)
+
+| Condition | Model | Path MAE | % income | Low-point MAE | Decision acc. | False-safe |
+|---|---|---|---|---|---|---|
+| clean | **twin** | ₹2,736 | **4.2%** | ₹3,039 | **96.8%** | **2.6%** |
+| clean | seasonal naive | ₹7,016 | 10.7% | ₹6,630 | 93.2% | 3.9% |
+| clean | linear drift | ₹20,034 | 30.6% | ₹22,571 | 77.3% | 22.7% |
+| clean | flat | ₹23,803 | 36.3% | ₹21,863 | 78.0% | 22.0% |
+| perturbed | **twin** | ₹10,003 | **15.6%** | ₹6,143 | **95.0%** | **3.5%** |
+| perturbed | seasonal naive | ₹12,974 | 20.0% | ₹9,087 | 92.6% | 4.6% |
+| perturbed | linear drift | ₹20,875 | 32.3% | ₹24,605 | 76.6% | 23.4% |
+| perturbed | flat | ₹22,789 | 35.2% | ₹24,034 | 77.2% | 22.8% |
+
+**Reading it.**
+- The twin beats every baseline on every metric in both conditions. Its advantage shrinks under noise (path error 4.2% →
+  15.6% of income), which is expected: it models structure, and the noise removes some.
+- Decisions degrade far less than path error (96.8% → 95.0%). Low-point accuracy matters more than day-by-day accuracy.
+- **A 3.5% false-safe rate is not zero.** This is why the product presents a buffer, shows the low point and date, and offers
+  a stress test with Monte Carlo bands. A natural next step is calibrating a margin from these residuals.
+
+**Caveat.** The histories come from the same generator family as the demo. That favours any model that finds monthly
+structure, so read these as evidence the method works, not as real-world accuracy. The `--file` mode exists so anyone can
+measure it on a real PayPal export.
+
+## 2. Guardrail red-team (`evals/guardrail_redteam.py`)
+
+**Protocol.** For each of the 40 benchmark questions, run the real tools and take the engine's deterministic reply as a
+known-correct answer. Ground truth is exactly what an LLM would receive (tool results + arguments + today).
+
+- *Faithful* variants (must pass): verbatim; amounts in lakh/K notation; amounts rounded to the rupee; dates as "November 15".
+- *Corrupted* variants (must be caught): one amount ×1.005 / ×1.05 / ×1.2 / ×0.5; two digits transposed; a fabricated extra
+  sentence with a new amount; a date moved 3 days; a percentage +5 points.
+
+**Ablation.** Every draft is also checked with the earlier flat 1% money tolerance.
+
+| Variant | n | Shipped (precision-aware) | Flat 1% |
+|---|---|---|---|
+| Faithful (all four kinds) | 154 | **100% accepted** | 100% accepted |
+| Digits transposed | 27 | **100% caught** | 29.6% |
+| Amount ×1.005 | 38 | **100%** | 0% |
+| Amount ×1.05 | 38 | 100% | 100% |
+| Amount ×1.2 | 38 | 97.4% | 100% |
+| Amount ×0.5 | 38 | 92.1% | 92.1% |
+| Fabricated sentence | 40 | 95.0% | 95.0% |
+| Date +3 days | 38 | 100% | 100% |
+| Percentage +5 | 5 | 100% | 100% |
+| **All corruptions** | 262 | **97.7%** | 76.3% |
+
+**Reading it.** Precision-aware tolerance (a full-digit figure must match to the rupee; a rounded one within half its last
+unit, capped at 2%) removes the blind spot for small errors at no cost in false rejections. The remaining 2.3% of misses are
+coincidences: the corrupted value equals another figure the tools legitimately returned. Value-based grounding can't
+separate those, so fixing it would need claim-to-source binding (e.g. having the model cite tool fields), which is future work.
+
+### Bugs this evaluation found (now fixed, with regression tests in `tests/test_agent.py`)
+1. `json.dumps` escaped "₹" as `₹`, and its trailing "9" merged into the next number ("₹12,469" became 912469), so real
+   figures inside engine sentences looked invented.
+2. Dates written out in engine sentences ("15 Nov 2026") weren't recognised, only ISO dates.
+3. Today's date wasn't treated as known.
+4. A flat 1% tolerance let digit transpositions through (29.6% detection).
+
+Before fixes 1–3, **45% of the engine's own correct replies were flagged as ungrounded**, which would have made the LLM
+path rewrite most good answers.
+
+## 3. Agent benchmark (`evals/agent_eval.py`, cases in `evals/agent_cases.json`)
+
+40 cases across purchases, affordability, what-ifs, stress, cross-border, snapshot, drafted checkouts and multi-turn
+follow-ups. 14 are **held-out paraphrases** (e.g. *"Thinking of getting a PS5 for 55k. Split it or pay outright?"*,
+*"Sounds good, let's split it into four"*) that the deterministic planner was not written for, and that it was deliberately
+not tuned on afterwards.
+
+Scored per case: the expected tool was called; its arguments matched (amounts within 0.5%, change types and key parameters);
+the final reply passed the grounding check.
+
+**Deterministic planner (offline, measured):**
+
+| Slice | n | Tool | Arguments | Grounded |
+|---|---|---|---|---|
+| Overall | 40 | 85.0% | 77.5% | 100% |
+| Wording it was written for | 26 | 100% | 100% | 100% |
+| Held-out paraphrases | 14 | 57.1% | 35.7% | 100% |
+
+The planner is exact on the wording it knows and brittle beyond it, while staying grounded either way. That gap is the reason
+for the LLM path.
+
+**Groq (live): not run in this build.** No API key was available while it was built, and no number is estimated or
+implied. Run `python -m evals.agent_eval --mode llm`. It records tool and argument accuracy, grounding, guardrail rewrites,
+fallback rate, p50/p95 latency and tokens per question to `evals/results/agent_llm.json`, and `/evals` picks it up
+automatically.
+
+## Test suite
+
+`pytest` (186 tests) covers the engine, parsers, PayPal flows (mocked HTTP and demo mode), the Groq client's retry/fallback
+behaviour, the agent loop and trace, the guardrail (accept/reject cases plus regressions), the checkout-proposal tool (creates
+no order, flags unsafe options), the rate limit, and the landing demo storyline on dates across a full year.

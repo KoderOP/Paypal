@@ -18,7 +18,7 @@ def _settings_out(db: Session) -> SettingsOut:
     return SettingsOut(
         user_name=user.name, currency=user.currency, data_source=(user.preferences or {}).get("data_source"),
         has_data=has_data(db, user), assumptions=repo.assumptions_for(user),
-        paypal=PayPalSource(paypal_runtime()[0]).status(), ai_configured=bool(s.openai_api_key),
+        paypal=PayPalSource(paypal_runtime()[0]).status(), ai_configured=bool(s.llm_settings),
     )
 
 

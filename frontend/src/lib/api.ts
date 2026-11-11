@@ -1,6 +1,6 @@
 import type {
   AddedSubscription, Affordability, AlertsView, AssistantStatus, ChatContext, CrossBorder, NamedScenario,
-  PayPalDemoOrder, PayPalDemoStatus, SavedScenario, ScenarioComparison, StressReport, SubscriptionInput, AuthState, ChatResponse, ChatTurn, CheckoutOrder, Dashboard, DemoFile, FileFormat,
+  PayPalDemoOrder, PayPalDemoStatus, SavedScenario, ScenarioComparison, StressReport, SubscriptionInput, AuthState, ChatResponse, ChatTurn, EvalsData, CheckoutOrder, Dashboard, DemoFile, FileFormat,
   ImportResult, LinkedSubscription, Obligation, ObligationCreate, PaymentComparison, PayPalOverview, PurchaseRequest,
   PurchaseSimulation, ScenarioChange, ScenarioInfo, ScenarioResult, SettingsData, StatusData, SubscriptionsOverview,
   TransactionPage, TwinData,
@@ -126,6 +126,7 @@ export const api = {
 
   // Assistant
   assistantStatus: () => request<AssistantStatus>('/assistant/status'),
+  evals: () => request<EvalsData>('/evals'),
   chat: (messages: ChatTurn[], context?: ChatContext | null) =>
     request<ChatResponse>('/assistant/chat', json('POST', { messages, context: context ?? undefined })),
 

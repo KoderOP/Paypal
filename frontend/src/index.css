@@ -2,6 +2,10 @@
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-paypal: #003087;
+  --color-paypal-sky: #009cde;
   --color-navy-950: #071330;
   --color-navy-900: #0b1b3a;
   --color-navy-800: #15284f;
@@ -40,3 +44,15 @@ body { font-feature-settings: 'cv11', 'ss01'; }
 @media (prefers-reduced-motion: reduce) { .animate-fade-up, .skeleton { animation: none; } }
 
 .recharts-wrapper:focus, .recharts-surface:focus { outline: none; }
+
+/* Landing: grain + slow reveal of the decision receipt. */
+.grain::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes stamp { 0% { opacity: 0; transform: scale(1.35) rotate(-8deg); } 60% { opacity: 1; transform: scale(.96) rotate(-6deg); } 100% { opacity: 1; transform: scale(1) rotate(-6deg); } }
+.stamp { animation: stamp .5s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes draw { from { stroke-dashoffset: var(--len, 600); } to { stroke-dashoffset: 0; } }
+.draw { stroke-dasharray: var(--len, 600); animation: draw 1.6s ease-out both; }
+.perforation { background-image: radial-gradient(circle at 6px 50%, transparent 5px, currentColor 5.5px); background-size: 14px 12px; }
+@media (prefers-reduced-motion: reduce) { .rise, .stamp, .draw { animation: none; } }

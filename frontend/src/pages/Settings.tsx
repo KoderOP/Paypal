@@ -107,7 +107,7 @@ export default function Settings() {
             {d.ai_configured
               ? 'The assistant uses the AI model to choose calculations and phrase answers. Every rupee figure is checked against the engine.'
               : 'Without a key, the assistant uses a built-in parser for the core what-if questions. Set '}
-            {!d.ai_configured && <><code className="rounded bg-slate-100 px-1">OPENAI_API_KEY</code> on the server for free-form chat.</>}
+            {!d.ai_configured && <><code className="rounded bg-slate-100 px-1">GROQ_API_KEY</code> on the server for free-form chat with Groq tool calling.</>}
           </p>
           <Link to="/assistant" className="mt-3 inline-block text-sm font-semibold text-navy-900 hover:underline">Open assistant →</Link>
         </Card>

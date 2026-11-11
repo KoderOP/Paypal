@@ -1,64 +1,73 @@
 import {
-  ArrowLeftRight, Bot, FlaskConical, Globe2, LayoutDashboard, LogIn, LogOut, Menu, Repeat, Settings, ShieldAlert, Sparkles,
-  UploadCloud, UserRound, Wallet, X,
+  ArrowLeftRight, Bot, FlaskConical, Globe2, LayoutDashboard, LogIn, LogOut, Menu, Microscope, Repeat, Settings, ShieldAlert,
+  Sparkles, UploadCloud, UserRound, Wallet, X,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/Auth'
 import { useDataStatus } from '../../context/DataStatus'
 
-export const NAV = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard },
-  { to: '/paypal', label: 'PayPal', icon: Wallet, paypal: true },
-  { to: '/crossborder', label: 'Cross-border income', icon: Globe2 },
-  { to: '/twin', label: 'My Financial Twin', icon: UserRound },
-  { to: '/simulator', label: 'What-if Simulator', icon: FlaskConical, highlight: true },
-  { to: '/assistant', label: 'AI Financial Assistant', icon: Bot, highlight: true },
-  { to: '/subscriptions', label: 'Subscriptions', icon: Repeat },
-  { to: '/stress', label: 'Stress Testing', icon: ShieldAlert },
-  { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
-  { to: '/settings', label: 'Settings', icon: Settings },
+interface NavItem { to: string; label: string; icon: typeof Bot; highlight?: boolean; paypal?: boolean }
+// One journey: ask → decide → pay with PayPal. Everything else supports that loop.
+const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+  { title: 'Decide', items: [
+    { to: '/assistant', label: 'Ask FINORA', icon: Bot, highlight: true },
+    { to: '/simulator', label: 'What-if Simulator', icon: FlaskConical },
+    { to: '/stress', label: 'Stress Test', icon: ShieldAlert },
+  ] },
+  { title: 'PayPal', items: [
+    { to: '/paypal', label: 'PayPal Hub', icon: Wallet, paypal: true },
+    { to: '/subscriptions', label: 'Subscriptions', icon: Repeat },
+    { to: '/crossborder', label: 'Cross-border income', icon: Globe2 },
+  ] },
+  { title: 'Understand', items: [
+    { to: '/', label: 'Overview', icon: LayoutDashboard },
+    { to: '/twin', label: 'My Financial Twin', icon: UserRound },
+    { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
+  ] },
+  { title: 'System', items: [
+    { to: '/evals', label: 'Evaluation', icon: Microscope },
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ] },
 ]
-
 function Logo() {
   return (
-    <div className="flex items-center gap-2.5 px-2">
+    <Link to="/welcome" className="flex items-center gap-2.5 px-2" aria-label="FINORA home">
       <svg viewBox="0 0 32 32" className="h-8 w-8" aria-hidden>
         <rect width="32" height="32" rx="9" fill="#0b1b3a" />
         <path d="M8 21l5-6 4 3 7-9" fill="none" stroke="#34d399" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <div>
         <p className="text-[15px] font-bold tracking-[0.08em] text-navy-900">FINORA</p>
-        <p className="-mt-0.5 text-[10px] font-medium text-navy-400">Financial Digital Twin</p>
+        <p className="-mt-0.5 text-[10px] font-medium text-navy-400">Simulate before you pay</p>
       </div>
-    </div>
+    </Link>
   )
 }
 
 function Nav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="mt-8 space-y-0.5" aria-label="Main">
-      {NAV.map(({ to, label, icon: Icon, highlight, paypal }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/'}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            `group flex items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] font-medium transition ${
-              isActive ? 'bg-navy-900 text-white shadow-sm' : 'text-navy-700 hover:bg-slate-100'
-            }`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Icon className={`h-4 w-4 ${isActive ? (paypal ? 'text-sky-300' : 'text-brand-500') : paypal ? 'text-[#003087]' : 'text-navy-400 group-hover:text-navy-700'}`} />
-              <span className="flex-1">{label}</span>
-              {paypal && !isActive && <span className="rounded bg-[#003087] px-1.5 text-[10px] font-semibold text-white">Core</span>}
-              {highlight && !isActive && <Sparkles className="h-3.5 w-3.5 text-brand-500" />}
-            </>
-          )}
-        </NavLink>
+    <nav className="mt-6 space-y-4 overflow-y-auto" aria-label="Main">
+      {NAV_GROUPS.map((g) => (
+        <div key={g.title}>
+          <p className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-navy-400">{g.title}</p>
+          <div className="space-y-0.5">
+            {g.items.map(({ to, label, icon: Icon, highlight, paypal }) => (
+              <NavLink key={to} to={to} end={to === '/'} onClick={onNavigate}
+                className={({ isActive }) =>
+                  `group flex items-center gap-3 rounded-xl px-3 py-[7px] text-[13.5px] font-medium transition ${
+                    isActive ? 'bg-navy-900 text-white shadow-sm' : 'text-navy-700 hover:bg-slate-100'}`}>
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`h-4 w-4 ${isActive ? (paypal ? 'text-sky-300' : 'text-brand-500') : paypal ? 'text-[#003087]' : 'text-navy-400 group-hover:text-navy-700'}`} />
+                    <span className="flex-1">{label}</span>
+                    {highlight && !isActive && <Sparkles className="h-3.5 w-3.5 text-brand-500" />}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </div>
       ))}
     </nav>
   )
@@ -103,7 +112,7 @@ function Account({ onNavigate }: { onNavigate?: () => void }) {
 function DataCta({ onNavigate }: { onNavigate?: () => void }) {
   const { status } = useDataStatus()
   return (
-    <div className="mt-auto rounded-xl bg-gradient-to-br from-navy-900 to-navy-800 p-4 text-white">
+    <div className="rounded-xl bg-gradient-to-br from-navy-900 to-navy-800 p-4 text-white">
       <p className="text-xs font-semibold text-brand-500">{status?.has_data ? `${status.transaction_count} transactions in your twin` : 'No data yet'}</p>
       <p className="mt-1 text-xs leading-relaxed text-slate-300">Connect PayPal or upload a statement to keep your twin current.</p>
       <Link to="/get-started" onClick={onNavigate} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/20">
@@ -116,11 +125,13 @@ function DataCta({ onNavigate }: { onNavigate?: () => void }) {
 export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
+  if (pathname === '/welcome') return <>{children}</>  // the landing page is full-bleed
   return (
     <div className="min-h-screen">
       <aside className="fixed inset-y-0 left-0 hidden w-[272px] flex-col border-r border-slate-200/80 bg-white px-4 py-6 lg:flex">
         <Logo />
         <Nav />
+        <div className="mt-auto pt-4" />
         <DataCta />
         <DemoModeNote />
         <Account />

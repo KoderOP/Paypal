@@ -172,7 +172,7 @@ def _payment_options(db: Session, user: User, args: dict) -> ToolOutcome:
     }
     card = {"kind": "payment_options", **c.model_dump(mode="json")}
     return ToolOutcome("compare_payment_options", {"amount": float(amount), "label": label}, True, summary, card,
-                       [c.recommendation.headline + "."] + c.recommendation.explanation)
+                       [c.recommendation.headline.rstrip(".") + "."] + c.recommendation.explanation)
 
 
 def _affordability(db: Session, user: User, args: dict) -> ToolOutcome:

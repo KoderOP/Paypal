@@ -22,20 +22,22 @@ const CrossBorder = lazy(() => import('./pages/CrossBorder'))
 const StressTest = lazy(() => import('./pages/StressTest'))
 const PayPalDemoCheckout = lazy(() => import('./pages/PayPalDemoCheckout'))
 const PayPalDemoSignIn = lazy(() => import('./pages/PayPalDemoSignIn'))
+const Landing = lazy(() => import('./pages/Landing'))
+const Evals = lazy(() => import('./pages/Evals'))
 
 // Pages that work before any data exists; everything else redirects to onboarding.
-const OPEN_ROUTES = ['/get-started', '/paypal', '/settings', '/signin']
+const OPEN_ROUTES = ['/welcome', '/evals', '/get-started', '/paypal', '/settings', '/signin']
 const OPEN_PREFIXES = ['/checkout/', '/paypal-demo/']
 
 // Only "has data?" gates pages. Sign-in never does: every feature works signed out.
 function Gate({ children }: { children: React.ReactNode }) {
   const { status, error, refresh } = useDataStatus()
   const { pathname } = useLocation()
-  if (pathname === '/signin' || pathname.startsWith('/paypal-demo/')) return <>{children}</>
+  if (pathname === '/signin' || pathname === '/welcome' || pathname.startsWith('/paypal-demo/')) return <>{children}</>
   if (error && !status) return <ErrorState error={new ApiError(0, error)} onRetry={() => void refresh()} />
   if (!status) return <PageSkeleton />
   if (!status.has_data && !OPEN_ROUTES.includes(pathname) && !OPEN_PREFIXES.some((p) => pathname.startsWith(p))) {
-    return <Navigate to="/get-started" replace />
+    return <Navigate to="/welcome" replace />
   }
   return <>{children}</>
 }
@@ -49,6 +51,8 @@ export default function App() {
             <Suspense fallback={<PageSkeleton />}>
               <Routes>
                 <Route path="/" element={<Overview />} />
+                <Route path="/welcome" element={<Landing />} />
+                <Route path="/evals" element={<Evals />} />
                 <Route path="/signin" element={<SignIn />} />
                 <Route path="/get-started" element={<GetStarted />} />
                 <Route path="/paypal" element={<PayPal />} />

@@ -364,6 +364,7 @@ export interface SnapshotCard {
 export type ToolCard = ({ kind: 'payment_options' } & PaymentComparison) | ({ kind: 'affordability' } & Affordability)
   | ScenarioCard | SnapshotCard | ({ kind: 'cross_border' } & CrossBorder)
   | { kind: 'stress'; resilience: StressReport['resilience']; summary: string[] }
+  | CheckoutProposal
 
 // ---- Compare scenarios -------------------------------------------------------------------------
 export interface NamedScenario { name: string; changes: ScenarioChange[] }
@@ -405,18 +406,88 @@ export interface ToolCall { tool: string; arguments: Record<string, unknown>; ok
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
 /** What the previous answer computed; sent back with the next question so follow-ups build on it. */
 export interface ChatContext { tool: string; arguments: Record<string, unknown> }
+export interface Grounding {
+  ok: boolean
+  checked: { money: number; percent: number; dates: number }
+  invented: { money: number[]; percent: number[]; dates: string[] }
+}
+export interface TraceStep {
+  type: 'llm' | 'tool' | 'guardrail' | 'plan' | 'fallback'
+  label: string
+  ms: number
+  ok: boolean
+  detail: Record<string, unknown>
+}
 export interface ChatResponse {
   reply: string
   mode: 'llm' | 'rules'
+  provider: string | null
   model: string | null
   verified: boolean
   guardrail: 'passed' | 'replaced' | null
+  grounding: Grounding
+  rejected_grounding?: Grounding
   note: string | null
   built_on: string | null
   context: ChatContext | null
   tool_calls: ToolCall[]
+  trace: TraceStep[]
+  usage: { prompt_tokens: number; completion_tokens: number; rounds: number } | null
+  latency_ms: number
 }
-export interface AssistantStatus { mode: 'llm' | 'rules'; model: string | null; guardrail: string }
+export interface AssistantStatus {
+  mode: 'llm' | 'rules'; provider: string | null; model: string | null; fallback_models: string[]; guardrail: string; actions: string
+}
+export interface CheckoutProposal {
+  kind: 'checkout_proposal'
+  status: 'awaiting_user_confirmation'
+  charged: false
+  amount: number
+  label: string
+  option_id: string
+  option_name: string
+  funding: 'paypal' | 'paylater' | null
+  safe: boolean
+  recommended: boolean
+  payments: { on: string; amount: number }[]
+  total_paid: number
+  extra_cost: number
+  min_balance: number
+  min_balance_date: string
+  days_below_buffer: number
+  safety_buffer: number
+  paypal_environment: 'demo' | 'sandbox' | 'live'
+  safer_alternative: { option_id: string; name: string; get_it_on: string } | null
+  note: string | null
+  terms_note: string | null
+}
+// Evaluation results are produced offline by backend/evals and served as-is.
+export interface EvalBlock {
+  n: number; tool_accuracy: number | null; arg_accuracy: number | null; grounded_rate: number | null
+  guardrail_replaced: number | null; fallback_rate: number | null; latency_ms_p50: number | null
+  latency_ms_p95: number | null; mean_tokens: number | null
+}
+export interface AgentEval {
+  mode: 'rules' | 'llm'; provider: string | null; model: string | null; commit: string | null; eval_today: string
+  summary: { overall: EvalBlock; seen_wording: EvalBlock; paraphrases: EvalBlock; by_category: Record<string, EvalBlock> }
+  cases: { id: string; category: string; paraphrase: boolean; question: string; tool_ok: boolean; args_ok: boolean; why: string; grounded: boolean; called: string[] }[]
+}
+export interface RedteamSummary {
+  faithful_n: number; faithful_acceptance_rate: number; false_rejection_rate: number; corrupted_n: number
+  corruption_detection_rate: number
+  by_variant: Record<string, { n: number; detection_rate?: number; acceptance_rate?: number }>
+}
+export interface BacktestModel {
+  n_forecasts: number; path_mae: number; path_mae_pct_income: number; low_point_mae: number
+  decision_accuracy: number; false_safe_rate: number
+}
+export interface EvalsData {
+  agent: { rules: AgentEval | null; llm: AgentEval | null }
+  guardrail: { commit: string | null; summary: RedteamSummary; ablation_flat_1pct_tolerance: RedteamSummary } | null
+  backtest: { commit: string | null; horizon_days: number; buffer: number
+    results: Record<string, { aggregate: Record<string, BacktestModel>; n_histories: number; cutoffs_per_history: number }> } | null
+  reproduce: string
+}
 
 export interface SettingsData {
   user_name: string

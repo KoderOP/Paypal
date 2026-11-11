@@ -24,6 +24,12 @@ TARGET_CURRENT_BALANCE = Decimal("110000.00")
 HISTORY_DAYS = 183
 SALARY = Decimal("65000")
 SALARY_LEAD_DAYS = 12
+# Bills are scheduled relative to the pay cycle, not the calendar: "day_of_month" below is the bill's
+# day in a month whose salary lands on the 15th, and is shifted with the salary for other dates. Real
+# commitments tend to follow payday, and it keeps the demo's shape (which bills fall before the next
+# salary) identical whatever day it is generated. On a date whose next salary is the 15th, every bill
+# lands on exactly its listed day.
+PAY_CYCLE_REF_DAY = 15
 
 # (day_of_month, description, merchant, category, amount or (low, high) range)
 FIXED_MONTHLY: list[tuple[int, str, str, str, int | tuple[int, int]]] = [
@@ -128,13 +134,22 @@ class SyntheticSource:
                 if self.start <= pay_day < self.today:
                     add(pay_day, "Salary credit - Acme Technologies Pvt Ltd", "Acme Technologies", "Income", SALARY)
 
+        # Bill dates anchored to each month's salary date (see PAY_CYCLE_REF_DAY).
+        fixed_on: dict[date, list[int]] = {}
+        fuel_on: set[date] = set()
+        for k in range(-1, 9):
+            anchor = _add_months(upcoming, -k)
+            for i, (day, *_rest) in enumerate(FIXED_MONTHLY):
+                fixed_on.setdefault(anchor + timedelta(days=day - PAY_CYCLE_REF_DAY), []).append(i)
+            fuel_on |= {anchor + timedelta(days=day - PAY_CYCLE_REF_DAY) for day in FUEL_DAYS}
+
         d = self.start
         while d < self.today:  # history up to yesterday; forecasting starts today
-            for day, desc, merchant, cat, amt in FIXED_MONTHLY:
-                if d.day == day:
-                    value = amt if isinstance(amt, int) else rng.randint(*amt)
-                    add(d, desc, merchant, cat, -Decimal(value))
-            if d.day in FUEL_DAYS:
+            for i in sorted(fixed_on.get(d, [])):
+                _, desc, merchant, cat, amt = FIXED_MONTHLY[i]
+                value = amt if isinstance(amt, int) else rng.randint(*amt)
+                add(d, desc, merchant, cat, -Decimal(value))
+            if d in fuel_on:
                 add(d, "Fuel - HP Petrol Pump", "HP Petrol", "Transport", -Decimal(rng.randint(600, 800)))
             for prob, weekday, desc, merchant, cat, (lo, hi) in VARIABLE:
                 if weekday is not None and d.weekday() != weekday:

@@ -1,4 +1,4 @@
-import { Bookmark, Bot, Calculator, CornerDownRight, Loader2, SendHorizontal, ShieldCheck, ShieldAlert, Sparkles, User } from 'lucide-react'
+import { AlertTriangle, Bookmark, Bot, Calculator, CheckCircle2, ChevronRight, CornerDownRight, Cpu, Loader2, Lock, SendHorizontal, ShieldCheck, ShieldAlert, Sparkles, User, Wrench } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -14,21 +14,24 @@ import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
 import { fmtShort, inr, inrCompact, signedInr } from '../lib/format'
 import { describeChange } from '../lib/scenarios'
-import type { ChatContext, ChatResponse, ChatTurn, CrossBorder, ScenarioCard, ScenarioChange, SnapshotCard, ToolCall } from '../lib/types'
+import type { ChatContext, ChatResponse, ChatTurn, CheckoutProposal, CrossBorder, ScenarioCard, ScenarioChange, SnapshotCard, ToolCall, TraceStep } from '../lib/types'
 
-const SUGGESTIONS = [
-  'What happens if I buy a laptop worth ₹75,000 this month?',
+const JOURNEY = [
+  'Should I buy a ₹75,000 laptop?',
   'What’s the most I can spend this month?',
-  'What if I cancel three subscriptions?',
-  'What if I add a ₹499/month gym membership?',
-  'What if USD/INR drops 3%?',
-  'How much am I losing to PayPal fees?',
-  'What if I lose my job for 2 months?',
-  'How resilient are my finances?',
-  'What if my income is delayed by 15 days?',
-  'What if I increase my monthly savings by 10%?',
   'When can I safely buy a ₹1.2 lakh vacation?',
 ]
+const SUGGESTIONS = [
+  'What if I cancel three subscriptions?',
+  'What if I add a ₹499/month gym membership?',
+  'What if my income is delayed by 15 days?',
+  'What if I lose my job for 2 months?',
+  'How resilient are my finances?',
+  'What if USD/INR drops 3%?',
+  'How much am I losing to PayPal fees?',
+]
+// One-tap follow-ups after a payment comparison: the agent drafts a checkout, the user still confirms.
+const PAY_FOLLOWUPS = ['Go ahead with PayPal Pay in 4', 'Pay in full now with PayPal', 'And what if my salary is also 10 days late?']
 
 interface Msg { role: 'user' | 'assistant'; content: string; res?: ChatResponse; error?: string }
 
@@ -69,19 +72,30 @@ export default function Assistant() {
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [msgs, busy])
 
   const mode = status.data?.mode
+  const last = [...msgs].reverse().find((m) => m.role === 'assistant')
+  const offerPay = !busy && last?.res?.context?.tool === 'compare_payment_options'
   return (
     <>
-      <PageHeader eyebrow="AI Financial Assistant" title="Ask your twin anything"
-        description="Ask in plain English. The assistant picks which calculation to run, and every figure comes from the same deterministic engine as the simulator."
+      <PageHeader eyebrow="Ask FINORA" title="Simulate before you pay"
+        description="Ask about any purchase or what-if. The agent picks engine tools, every figure is checked against the engine, and it can draft a PayPal checkout that only you can confirm."
         actions={mode && (mode === 'llm'
-          ? <Badge tone="green" icon={<Sparkles className="h-3 w-3" />}>AI · {status.data?.model}</Badge>
-          : <Badge tone="neutral" icon={<Calculator className="h-3 w-3" />}>Built-in calculator</Badge>)} />
+          ? <Badge tone="green" icon={<Sparkles className="h-3 w-3" />}>{status.data?.provider === 'groq' ? 'Groq' : status.data?.provider} · {status.data?.model}</Badge>
+          : <Badge tone="neutral" icon={<Calculator className="h-3 w-3" />}>Deterministic planner · no AI key</Badge>)} />
 
       <div className="space-y-5">
         {msgs.length === 0 && (
           <Card>
-            <CardHeader title="Try one of these" icon={<Sparkles className="h-4 w-4 text-brand-600" />}
-              subtitle={mode === 'rules' ? 'No AI key is set, so a built-in parser answers these questions exactly. Add OPENAI_API_KEY for free-form chat.' : undefined} />
+            <CardHeader title="Start with a decision" icon={<Sparkles className="h-4 w-4 text-brand-600" />}
+              subtitle={mode === 'rules' ? 'No GROQ_API_KEY is set, so a deterministic planner answers these exactly. Add a key for free-form questions.' : 'Ask in your own words. Follow-ups build on the previous answer.'} />
+            <div className="grid gap-2 sm:grid-cols-3">
+              {JOURNEY.map((s, i) => (
+                <button key={s} onClick={() => void send(s)} className="group rounded-xl border border-slate-200 p-3 text-left transition hover:border-navy-900 hover:bg-slate-50">
+                  <span className="font-mono text-[10.5px] text-navy-400">0{i + 1}</span>
+                  <p className="mt-0.5 text-[13.5px] font-medium text-navy-900">{s}</p>
+                </button>
+              ))}
+            </div>
+            <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-navy-400">Or explore a what-if</p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
                 <button key={s} onClick={() => void send(s)} className="rounded-full border border-slate-200 px-3 py-1.5 text-left text-[13px] text-navy-700 transition hover:border-navy-900 hover:bg-slate-50">{s}</button>
@@ -98,7 +112,16 @@ export default function Assistant() {
         ) : (
           <AssistantMessage key={i} m={m} onChanged={() => void refresh()} />
         ))}
-        {busy && <p className="flex items-center gap-2 text-sm text-navy-500"><Loader2 className="h-4 w-4 animate-spin" /> Running the numbers…</p>}
+        {offerPay && (
+          <div className="flex flex-wrap gap-2 pl-9">
+            {PAY_FOLLOWUPS.map((q) => (
+              <button key={q} onClick={() => void send(q)} className="inline-flex items-center gap-1 rounded-full border border-[#003087]/25 bg-[#003087]/[0.04] px-3 py-1.5 text-[13px] font-medium text-[#003087] hover:bg-[#003087]/10">
+                <CornerDownRight className="h-3.5 w-3.5" />{q}
+              </button>
+            ))}
+          </div>
+        )}
+        {busy && <p className="flex items-center gap-2 pl-9 text-sm text-navy-500"><Loader2 className="h-4 w-4 animate-spin" /> {mode === 'llm' ? 'The agent is choosing tools and running the engine…' : 'Running the numbers…'}</p>}
         <div ref={end} />
       </div>
 
@@ -127,6 +150,7 @@ function contextLabel(c: ChatContext): string {
   if (c.tool === 'simulate_scenario' && a.changes?.length) return a.changes.map(describeChange).join(' + ')
   if (c.tool === 'compare_payment_options') return `${a.label ?? 'Purchase'} ${inr(Number(a.amount ?? 0))}`
   if (c.tool === 'find_affordability') return a.amount ? `affordability of ${inr(a.amount)}` : 'how much you can spend'
+  if (c.tool === 'prepare_paypal_checkout') return `PayPal checkout for ${a.label ?? 'purchase'} ${inr(Number(a.amount ?? 0))}`
   return c.tool.replace(/_/g, ' ')
 }
 
@@ -149,11 +173,11 @@ function AssistantMessage({ m, onChanged }: { m: Msg; onChanged: () => void }) {
             {m.res && (
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5">
                 {m.res.guardrail === 'replaced'
-                  ? <Badge tone="amber" icon={<ShieldAlert className="h-3 w-3" />}>Rewritten from computed figures</Badge>
-                  : <Badge tone="green" icon={<ShieldCheck className="h-3 w-3" />}>Every figure checked against the engine</Badge>}
-                <Badge>{m.res.mode === 'llm' ? `AI · ${m.res.model}` : 'Built-in calculator'}</Badge>
-                {m.res.tool_calls.map((t, i) => <Badge key={i} tone="navy">{t.tool.replace(/_/g, ' ')}</Badge>)}
+                  ? <Badge tone="amber" icon={<ShieldAlert className="h-3 w-3" />}>AI draft rejected · rewritten from engine output</Badge>
+                  : <Badge tone="green" icon={<ShieldCheck className="h-3 w-3" />}>{groundingLabel(m.res)}</Badge>}
+                <Badge>{m.res.mode === 'llm' ? `${m.res.provider === 'groq' ? 'Groq' : m.res.provider} · ${m.res.model}` : 'Deterministic planner'}</Badge>
                 {m.res.note && <p className="w-full text-[11px] text-navy-400">{m.res.note}</p>}
+                <TracePanel res={m.res} />
               </div>
             )}
           </div>
@@ -173,6 +197,7 @@ function ToolCardView({ call, onChanged }: { call: ToolCall; onChanged: () => vo
     case 'scenario': return <ScenarioView card={c} changes={(call.arguments.changes as ScenarioChange[] | undefined) ?? []} />
     case 'snapshot': return <SnapshotView card={c} />
     case 'cross_border': return <CrossBorderView card={c} />
+    case 'checkout_proposal': return <CheckoutProposalCard p={c} />
     case 'stress': return (
       <Card>
         <CardHeader title={`Resilience: ${c.resilience}`} action={<Link to="/stress" className="text-[13px] font-semibold text-navy-900 hover:underline">Open stress test →</Link>} />
@@ -271,5 +296,137 @@ function SnapshotView({ card }: { card: SnapshotCard }) {
         ))}
       </div>
     </Card>
+  )
+}
+
+function groundingLabel(r: ChatResponse): string {
+  const c = r.grounding?.checked
+  const n = c ? c.money + c.percent + c.dates : 0
+  return n ? `${n} figure${n === 1 ? '' : 's'} checked against the engine · 0 invented` : 'Grounded in engine results'
+}
+
+const STEP_ICON: Record<TraceStep['type'], typeof Cpu> = { llm: Cpu, tool: Wrench, guardrail: ShieldCheck, plan: Calculator, fallback: AlertTriangle }
+
+/** How the answer was produced: model rounds, tool calls with arguments, guardrail verdict. */
+function TracePanel({ res }: { res: ChatResponse }) {
+  if (!res.trace?.length) return null
+  return (
+    <details className="group w-full">
+      <summary className="flex cursor-pointer list-none items-center gap-1 text-[11.5px] font-medium text-navy-500 hover:text-navy-900">
+        <ChevronRight className="h-3.5 w-3.5 transition group-open:rotate-90" />
+        How this answer was produced · {res.trace.filter((t) => t.type === 'tool').length} tool call(s) · {(res.latency_ms / 1000).toFixed(1)} s
+        {res.usage && <> · {res.usage.prompt_tokens + res.usage.completion_tokens} tokens</>}
+      </summary>
+      <ol className="mt-2 space-y-1.5 border-l border-slate-200 pl-3">
+        {res.trace.map((t, i) => {
+          const Icon = STEP_ICON[t.type]
+          const d = t.detail as Record<string, unknown>
+          return (
+            <li key={i} className="text-[12px]">
+              <div className="flex items-center gap-1.5">
+                <Icon className={`h-3.5 w-3.5 ${t.ok ? 'text-navy-500' : 'text-amber-600'}`} />
+                <span className="font-medium text-navy-800">{t.type === 'tool' ? <code className="font-mono">{t.label}</code> : t.label}</span>
+                {t.ms > 0 && <span className="text-navy-400">{t.ms} ms</span>}
+                {t.type === 'guardrail' && <Badge tone={t.ok ? 'green' : 'amber'}>{t.ok ? 'passed' : 'rejected'}</Badge>}
+              </div>
+              {t.type === 'tool' && d.arguments != null && (
+                <pre className="mt-0.5 overflow-x-auto rounded bg-slate-50 px-2 py-1 font-mono text-[11px] text-navy-600">{JSON.stringify(d.arguments)}</pre>
+              )}
+              {t.type === 'llm' && (
+                <p className="text-navy-400">
+                  {(d.requested_tools as string[] | undefined)?.length ? `requested ${(d.requested_tools as string[]).join(', ')}` : 'wrote the answer'}
+                  {d.prompt_tokens != null && ` · ${String(d.prompt_tokens)}+${String(d.completion_tokens)} tokens`}
+                  {(d.notes as string[] | undefined)?.map((n) => ` · ${n}`)}
+                </p>
+              )}
+              {t.type === 'guardrail' && (() => {
+                const g = d as unknown as ChatResponse['grounding']
+                const bad = [...g.invented.money.map((v) => inr(v)), ...g.invented.percent.map((v) => `${v}%`), ...g.invented.dates]
+                return <p className="text-navy-400">checked {g.checked.money} amount(s), {g.checked.percent} percentage(s), {g.checked.dates} date(s){bad.length ? ` · not in engine output: ${bad.join(', ')}` : ''}</p>
+              })()}
+              {t.type === 'fallback' && <p className="text-amber-700">{String(d.error ?? '')}</p>}
+            </li>
+          )
+        })}
+      </ol>
+    </details>
+  )
+}
+
+/** The agent's only action: a drafted PayPal checkout. Nothing is created until the user confirms here. */
+function CheckoutProposalCard({ p }: { p: CheckoutProposal }) {
+  const [ack, setAck] = useState(false)
+  const [risk, setRisk] = useState(false)
+  const [state, setState] = useState<'idle' | 'busy' | 'error'>('idle')
+  const [err, setErr] = useState<string | null>(null)
+  const ready = ack && (p.safe || risk)
+  async function go() {
+    setState('busy')
+    setErr(null)
+    try {
+      const order = await api.startCheckout({ amount: p.amount, label: p.label, option_id: p.option_id, acknowledged: true })
+      if (order.approve_url) window.location.assign(order.approve_url)
+      else { setErr(order.error ?? 'PayPal did not return an approval link.'); setState('error') }
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : String(e))
+      setState('error')
+    }
+  }
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#003087]/20 bg-white shadow-[0_1px_2px_rgba(11,27,58,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-[#003087] px-5 py-3 text-white">
+        <p className="flex items-center gap-2 text-sm font-semibold"><Lock className="h-4 w-4" /> Drafted PayPal checkout · not paid</p>
+        <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium">
+          {p.paypal_environment === 'demo' ? 'PayPal demo mode · no real money' : p.paypal_environment === 'sandbox' ? 'PayPal Sandbox' : 'PayPal Live'}
+        </span>
+      </div>
+      <div className="space-y-4 p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[12px] text-navy-500">{p.label}</p>
+            <p className="tabular text-2xl font-semibold text-navy-900">{inr(p.amount)}</p>
+            <p className="text-[13px] text-navy-600">{p.option_name}{p.extra_cost > 0 && ` · ${inr(p.extra_cost)} extra`}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[12px] text-navy-500">Lowest projected balance</p>
+            <p className={`tabular text-lg font-semibold ${p.safe ? 'text-brand-700' : 'text-red-600'}`}>{inr(p.min_balance)}</p>
+            <p className="text-[12px] text-navy-500">on {fmtShort(p.min_balance_date)} · buffer {inr(p.safety_buffer)}</p>
+          </div>
+        </div>
+        {p.payments.length > 1 && (
+          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {p.payments.slice(0, 8).map((x, i) => (
+              <li key={i} className="rounded-lg bg-slate-50 px-3 py-2"><p className="text-[11px] text-navy-500">{fmtShort(x.on)}</p><p className="tabular text-[13px] font-semibold text-navy-900">{inr(x.amount)}</p></li>
+            ))}
+          </ol>
+        )}
+        {p.safe
+          ? <p className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-[13px] text-brand-700"><CheckCircle2 className="h-4 w-4" /> Stays above your safety buffer for the whole forecast.</p>
+          : <p className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              Below your buffer for {p.days_below_buffer} day(s).{p.safer_alternative && ` Waiting until ${fmtShort(p.safer_alternative.get_it_on)} keeps you safe.`}</p>}
+        {p.terms_note && <p className="text-[11.5px] text-navy-400">{p.terms_note}</p>}
+        {p.note && <p className="text-[11.5px] text-navy-500">{p.note}</p>}
+        <div className="space-y-2 border-t border-slate-100 pt-4">
+          <label className="flex items-start gap-2 text-[13px] text-navy-700">
+            <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#003087]" />
+            I’ve reviewed the simulated impact and want to continue to PayPal.
+          </label>
+          {!p.safe && (
+            <label className="flex items-start gap-2 text-[13px] text-red-700">
+              <input type="checkbox" checked={risk} onChange={(e) => setRisk(e.target.checked)} className="mt-0.5 h-4 w-4 accent-red-600" />
+              I understand this takes my balance below my safety buffer.
+            </label>
+          )}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button onClick={() => void go()} disabled={!ready || state === 'busy'}
+              className="inline-flex items-center gap-2 rounded-full bg-[#ffc439] px-5 py-2 text-sm font-bold text-[#003087] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40">
+              {state === 'busy' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Continue to PayPal
+            </button>
+            <p className="text-[11.5px] text-navy-400">You approve on PayPal, then confirm the capture in FINORA. Nothing is charged before that.</p>
+          </div>
+          {err && <p role="alert" className="text-[13px] text-red-600">{err}</p>}
+        </div>
+      </div>
+    </section>
   )
 }

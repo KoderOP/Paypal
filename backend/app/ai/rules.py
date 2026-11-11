@@ -1,6 +1,6 @@
 """Deterministic intent parser: turns a question into engine tool calls without an LLM.
 
-Used when no OPENAI_API_KEY is set (and as a fallback if the LLM call fails). It understands
+Used when no GROQ_API_KEY (or OPENAI_API_KEY) is set (and as a fallback if the LLM call fails). It understands
 the simulator's core questions, for example:
   "What if I buy a laptop worth ₹75,000 this month?"         → compare_payment_options
   "What's the most I can spend this month?"                  → find_affordability
