@@ -1,0 +1,898 @@
+{
+  "benchmark": "agent",
+  "mode": "rules",
+  "provider": null,
+  "model": null,
+  "commit": "47399ec",
+  "python": "3.14.2",
+  "eval_today": "2026-11-03",
+  "summary": {
+    "overall": {
+      "n": 40,
+      "tool_accuracy": 0.85,
+      "arg_accuracy": 0.775,
+      "grounded_rate": 1.0,
+      "guardrail_replaced": 0.0,
+      "fallback_rate": 0.0,
+      "latency_ms_p50": 22.0,
+      "latency_ms_p95": 80,
+      "mean_tokens": 0
+    },
+    "seen_wording": {
+      "n": 26,
+      "tool_accuracy": 1.0,
+      "arg_accuracy": 1.0,
+      "grounded_rate": 1.0,
+      "guardrail_replaced": 0.0,
+      "fallback_rate": 0.0,
+      "latency_ms_p50": 32.5,
+      "latency_ms_p95": 131,
+      "mean_tokens": 0
+    },
+    "paraphrases": {
+      "n": 14,
+      "tool_accuracy": 0.571,
+      "arg_accuracy": 0.357,
+      "grounded_rate": 1.0,
+      "guardrail_replaced": 0.0,
+      "fallback_rate": 0.0,
+      "latency_ms_p50": 20.0,
+      "latency_ms_p95": 47,
+      "mean_tokens": 0
+    },
+    "by_category": {
+      "affordability": {
+        "n": 5,
+        "tool_accuracy": 0.8,
+        "arg_accuracy": 0.8,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 21,
+        "latency_ms_p95": 49,
+        "mean_tokens": 0
+      },
+      "checkout": {
+        "n": 4,
+        "tool_accuracy": 0.75,
+        "arg_accuracy": 0.75,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 35.5,
+        "latency_ms_p95": 38,
+        "mean_tokens": 0
+      },
+      "cross_border": {
+        "n": 2,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 1.0,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 28.5,
+        "latency_ms_p95": 36,
+        "mean_tokens": 0
+      },
+      "follow_up": {
+        "n": 4,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 0.75,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 20.0,
+        "latency_ms_p95": 35,
+        "mean_tokens": 0
+      },
+      "purchase": {
+        "n": 6,
+        "tool_accuracy": 0.667,
+        "arg_accuracy": 0.667,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 48.5,
+        "latency_ms_p95": 308,
+        "mean_tokens": 0
+      },
+      "scenario": {
+        "n": 14,
+        "tool_accuracy": 0.929,
+        "arg_accuracy": 0.786,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 21.0,
+        "latency_ms_p95": 39,
+        "mean_tokens": 0
+      },
+      "snapshot": {
+        "n": 2,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 1.0,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 19.0,
+        "latency_ms_p95": 19,
+        "mean_tokens": 0
+      },
+      "stress": {
+        "n": 3,
+        "tool_accuracy": 0.667,
+        "arg_accuracy": 0.667,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 80,
+        "latency_ms_p95": 131,
+        "mean_tokens": 0
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "buy-01",
+      "category": "purchase",
+      "paraphrase": false,
+      "question": "What happens if I buy a laptop worth ₹75,000 this month?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 308,
+      "tokens": 0,
+      "reply": "Split it with PayPal Pay in 4: get it today and stay above your buffer.\n• Recommended: PayPal Pay in 4. It is the cheapest option that keeps you above your ₹20,000 buffer, and you pay ₹18,750 today.\n• Pay in full today: drops to ₹13,800 on 14 Nov 2026, below your ₹20,000 buffer for 7 day(s).\n• Wait until 15 Nov: lowest balance ₹33,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay in 4: lowest balance ₹52,210 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay Monthly · 12 mo: lowest balance ₹1,01,513 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹8,367 extra."
+    },
+    {
+      "id": "buy-02",
+      "category": "purchase",
+      "paraphrase": false,
+      "question": "Can I afford a ₹40,000 phone?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 62,
+      "tokens": 0,
+      "reply": "Pay in full today. You can afford it..\n• Recommended: Pay in full today. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: lowest balance ₹48,800 on 14 Nov 2026, above your ₹20,000 buffer.\n• Wait until 15 Nov: lowest balance ₹68,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay in 4: lowest balance ₹78,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay Monthly · 12 mo: lowest balance ₹1,04,755 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹4,462 extra."
+    },
+    {
+      "id": "buy-03",
+      "category": "purchase",
+      "paraphrase": false,
+      "question": "Should I buy a ₹1.5 lakh scooter or use Pay Later?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 44,
+      "tokens": 0,
+      "reply": "Split it with PayPal Pay Monthly · 12 mo: get it today and stay above your buffer.\n• Recommended: PayPal Pay Monthly · 12 mo. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: drops to -₹61,200 on 14 Nov 2026, below your ₹20,000 buffer for 70 day(s).\n• Wait until 15 Jan: drops to -₹3,397 on 14 Feb 2027, below your ₹20,000 buffer for 19 day(s).\n• PayPal Pay in 4: drops to -₹22,469 on 14 Jan 2027, below your ₹20,000 buffer for 60 day(s).\n• PayPal Pay Monthly · 12 mo: lowest balance ₹94,566 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹16,734 extra."
+    },
+    {
+      "id": "buy-04",
+      "category": "purchase",
+      "paraphrase": true,
+      "question": "Thinking of getting a PS5 for 55k. Split it or pay outright?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 53,
+      "tokens": 0,
+      "reply": "Pay in full today. You can afford it..\n• Recommended: Pay in full today. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: lowest balance ₹33,800 on 14 Nov 2026, above your ₹20,000 buffer.\n• Wait until 15 Nov: lowest balance ₹53,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay in 4: lowest balance ₹67,210 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay Monthly · 12 mo: lowest balance ₹1,03,365 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹6,136 extra."
+    },
+    {
+      "id": "buy-05",
+      "category": "purchase",
+      "paraphrase": true,
+      "question": "My sister's wedding gift will be around twenty-five thousand rupees, is that ok right now?",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['get_financial_snapshot']",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 19,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "buy-06",
+      "category": "purchase",
+      "paraphrase": true,
+      "question": "Is splurging 90000 on a new camera a bad idea?",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['get_financial_snapshot']",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 18,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "aff-01",
+      "category": "affordability",
+      "paraphrase": false,
+      "question": "What's the most I can spend this month?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 20,
+      "tokens": 0,
+      "reply": "Today you can spend up to ₹68,800 and stay above your ₹20,000 buffer. The tightest point is 14 Nov 2026.\n• This month the most you can spend is ₹88,460, if you buy on 15 Nov 2026.\n• In the next 60 days your spending room peaks at ₹1,07,531 on 15 Dec 2026."
+    },
+    {
+      "id": "aff-02",
+      "category": "affordability",
+      "paraphrase": false,
+      "question": "When can I safely buy a ₹1.2 lakh vacation?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability",
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 49,
+      "tokens": 0,
+      "reply": "Today you can spend up to ₹68,800 and stay above your ₹20,000 buffer. The tightest point is 14 Nov 2026.\n• This month the most you can spend is ₹88,460, if you buy on 15 Nov 2026.\n• In the next 60 days your spending room peaks at ₹1,07,531 on 15 Dec 2026.\n• No date in the next 60 days keeps you above your buffer after spending ₹1,20,000. The most you could safely spend is ₹1,07,531 on 15 Dec 2026, ₹12,469 short. At your monthly surplus of ₹18,182 that gap closes in about 0.7 month(s).\n• Wait until 15 Jan 2027. It costs nothing extra..\n• Recommended: Wait until 15 Jan. It is the cheapest option"
+    },
+    {
+      "id": "aff-03",
+      "category": "affordability",
+      "paraphrase": false,
+      "question": "How much can I spend today without going below my buffer?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 21,
+      "tokens": 0,
+      "reply": "Today you can spend up to ₹68,800 and stay above your ₹20,000 buffer. The tightest point is 14 Nov 2026.\n• This month the most you can spend is ₹88,460, if you buy on 15 Nov 2026.\n• In the next 60 days your spending room peaks at ₹1,07,531 on 15 Dec 2026."
+    },
+    {
+      "id": "aff-04",
+      "category": "affordability",
+      "paraphrase": true,
+      "question": "What's my spending headroom before payday?",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['get_financial_snapshot']",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 19,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "aff-05",
+      "category": "affordability",
+      "paraphrase": true,
+      "question": "Earliest date I could drop ₹60,000 on a sofa?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability",
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 47,
+      "tokens": 0,
+      "reply": "Today you can spend up to ₹68,800 and stay above your ₹20,000 buffer. The tightest point is 14 Nov 2026.\n• This month the most you can spend is ₹88,460, if you buy on 15 Nov 2026.\n• In the next 60 days your spending room peaks at ₹1,07,531 on 15 Dec 2026.\n• The earliest safe date to spend ₹60,000 is today.\n• Pay in full today. You can afford it..\n• Recommended: Pay in full today. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: lowest balance ₹28,800 on 14 Nov 2026, above your ₹20,000 buffer.\n• Wait until 15 Nov: lowest balance ₹48,460 on 14 Dec 2026, ab"
+    },
+    {
+      "id": "scn-01",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I cancel three subscriptions?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 22,
+      "tokens": 0,
+      "reply": "Changes: Cancel Cult.fit, Netflix, Amazon Prime (saves ₹1,933/month).\n• In 90 days your balance would be ₹1,74,190 instead of ₹1,68,391 (+₹5,799).\n• Lowest projected balance: ₹90,434 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: +₹1,933 per month, +₹23,196 per year."
+    },
+    {
+      "id": "scn-02",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if my income is delayed by 15 days?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 21,
+      "tokens": 0,
+      "reply": "Changes: Delay income due 15 Nov 2026 by 15 days.\n• In 90 days your balance would be ₹1,68,391 instead of ₹1,68,391 (+₹0).\n• Lowest projected balance: ₹78,426 on 29 Nov 2026 (baseline ₹88,800)."
+    },
+    {
+      "id": "scn-03",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I increase my monthly savings by 10%?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 22,
+      "tokens": 0,
+      "reply": "Changes: Raise monthly savings by 10.0% (+₹1,000/month to investments).\n• In 90 days your balance would be ₹1,65,391 instead of ₹1,68,391 (-₹3,000).\n• Lowest projected balance: ₹87,800 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: -₹1,000 per month, -₹12,000 per year.\n• Savings still belong to you, but they leave your spendable balance in this projection."
+    },
+    {
+      "id": "scn-04",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I add a ₹499/month gym membership?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 21,
+      "tokens": 0,
+      "reply": "Changes: Subscribe to Gym membership at ₹499/month, starting today.\n• In 90 days your balance would be ₹1,66,894 instead of ₹1,68,391 (-₹1,497).\n• Lowest projected balance: ₹88,301 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: -₹499 per month, -₹5,988 per year."
+    },
+    {
+      "id": "scn-05",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I lose my job for 2 months?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 52,
+      "tokens": 0,
+      "reply": "Changes: Lose all regular income for 2 month(s) (₹1,30,000 less).\n• In 90 days your balance would be ₹38,391 instead of ₹1,68,391 (-₹1,30,000).\n• Lowest projected balance: -₹2,469 on 14 Jan 2027 (baseline ₹88,800)."
+    },
+    {
+      "id": "scn-06",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I cancel Netflix and Spotify and my salary is 2 weeks late?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 21,
+      "tokens": 0,
+      "reply": "Changes: Cancel Netflix, Spotify (saves ₹768/month); Delay income due 15 Nov 2026 by 14 days.\n• In 90 days your balance would be ₹1,70,695 instead of ₹1,68,391 (+₹2,304).\n• Lowest projected balance: ₹79,782 on 28 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: +₹768 per month, +₹9,216 per year."
+    },
+    {
+      "id": "scn-07",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I have a ₹30,000 medical emergency next week?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 20,
+      "tokens": 0,
+      "reply": "Changes: Medical expense: ₹30,000 on 03 Nov 2026.\n• In 90 days your balance would be ₹1,38,391 instead of ₹1,68,391 (-₹30,000).\n• Lowest projected balance: ₹58,800 on 14 Nov 2026 (baseline ₹88,800)."
+    },
+    {
+      "id": "scn-08",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if my spending goes up by 20%?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 30,
+      "tokens": 0,
+      "reply": "Changes: Increase day-to-day spending by 20.0% (+₹3,531/month).\n• In 90 days your balance would be ₹1,57,680 instead of ₹1,68,391 (-₹10,712).\n• Lowest projected balance: ₹87,388 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: -₹3,531 per month, -₹42,377 per year."
+    },
+    {
+      "id": "scn-09",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if USD/INR drops 3%?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 39,
+      "tokens": 0,
+      "reply": "No changes could be applied.\n• In 90 days your balance would be ₹1,68,391 instead of ₹1,68,391 (+₹0).\n• Lowest projected balance: ₹88,800 on 14 Nov 2026 (baseline ₹88,800).\n• No regular income in USD was detected, so an exchange-rate move changes nothing."
+    },
+    {
+      "id": "scn-10",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "Suppose I get laid off next month and it takes me three months to find work.",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 23,
+      "tokens": 0,
+      "reply": "Changes: Lose all regular income for 3 month(s) (₹1,95,000 less).\n• In 90 days your balance would be -₹26,609 instead of ₹1,68,391 (-₹1,95,000).\n• Lowest projected balance: -₹26,609 on 01 Feb 2027 (baseline ₹88,800)."
+    },
+    {
+      "id": "scn-11",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "I'm planning to trim my day-to-day spending by 15 percent. How does that change things?",
+      "tool_ok": true,
+      "args_ok": false,
+      "why": "expense_increase.percent=15.0, expected -15",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 20,
+      "tokens": 0,
+      "reply": "Changes: Increase day-to-day spending by 15.0% (+₹2,649/month).\n• In 90 days your balance would be ₹1,60,357 instead of ₹1,68,391 (-₹8,034).\n• Lowest projected balance: ₹87,741 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: -₹2,649 per month, -₹31,783 per year."
+    },
+    {
+      "id": "scn-12",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "Drop my Amazon Prime and YouTube Premium, how much better off am I?",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['get_financial_snapshot']",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 18,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "scn-13",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "Acme pays me a fortnight late every month from now on. Will I be ok?",
+      "tool_ok": true,
+      "args_ok": false,
+      "why": "income_delay.days=15, expected 14",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 19,
+      "tokens": 0,
+      "reply": "Changes: Delay every Acme Technologies Pvt Ltd payment by 15 days.\n• In 90 days your balance would be ₹1,68,391 instead of ₹1,68,391 (+₹0).\n• Lowest projected balance: ₹78,426 on 29 Nov 2026 (baseline ₹88,800)."
+    },
+    {
+      "id": "scn-14",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "My car needs an urgent ₹45,000 repair. What does that do to my cash?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 20,
+      "tokens": 0,
+      "reply": "Changes: Repair expense: ₹45,000 on 03 Nov 2026.\n• In 90 days your balance would be ₹1,23,391 instead of ₹1,68,391 (-₹45,000).\n• Lowest projected balance: ₹43,800 on 14 Nov 2026 (baseline ₹88,800)."
+    },
+    {
+      "id": "str-01",
+      "category": "stress",
+      "paraphrase": false,
+      "question": "How resilient are my finances?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "run_stress_test"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 80,
+      "tokens": 0,
+      "reply": "With no income at all, your ₹1,10,000 lasts about 3.1 month(s) at ₹35,340/month of bills and day-to-day spending (savings paused).\n• Across 400 simulated spending paths, 0% dip below your ₹20,000 buffer and 0% go negative in the next 90 days.\n• You stay solvent in 5 of 6 shocks. The hardest is Job loss: 3 months: lowest -₹26,609 on 01 Feb 2027."
+    },
+    {
+      "id": "str-02",
+      "category": "stress",
+      "paraphrase": false,
+      "question": "How long would my money last in a worst case?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "run_stress_test"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 131,
+      "tokens": 0,
+      "reply": "With no income at all, your ₹1,10,000 lasts about 3.1 month(s) at ₹35,340/month of bills and day-to-day spending (savings paused).\n• Across 400 simulated spending paths, 0% dip below your ₹20,000 buffer and 0% go negative in the next 90 days.\n• You stay solvent in 5 of 6 shocks. The hardest is Job loss: 3 months: lowest -₹26,609 on 01 Feb 2027."
+    },
+    {
+      "id": "str-03",
+      "category": "stress",
+      "paraphrase": true,
+      "question": "Am I prepared if things go badly?",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['get_financial_snapshot']",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 23,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "xb-01",
+      "category": "cross_border",
+      "paraphrase": false,
+      "question": "How much am I losing to PayPal fees?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_cross_border_summary"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 36,
+      "tokens": 0,
+      "reply": "No foreign-currency income was found. Upload a PayPal Activity report that includes your international payments and PayPal's currency conversions to see fees, rates and FX risk."
+    },
+    {
+      "id": "xb-02",
+      "category": "cross_border",
+      "paraphrase": false,
+      "question": "What exchange rate did PayPal give me on my USD income?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_cross_border_summary"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 21,
+      "tokens": 0,
+      "reply": "No foreign-currency income was found. Upload a PayPal Activity report that includes your international payments and PayPal's currency conversions to see fees, rates and FX risk."
+    },
+    {
+      "id": "snap-01",
+      "category": "snapshot",
+      "paraphrase": false,
+      "question": "How am I doing financially?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 19,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "snap-02",
+      "category": "snapshot",
+      "paraphrase": true,
+      "question": "Give me a quick summary of my money.",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 19,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "pay-01",
+      "category": "checkout",
+      "paraphrase": false,
+      "question": "Pay with PayPal for a ₹75,000 laptop using Pay in 4",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "prepare_paypal_checkout"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 38,
+      "tokens": 0,
+      "reply": "I've prepared a PayPal checkout for Laptop (₹75,000) using PayPal Pay in 4. Nothing has been charged.\n• Your lowest projected balance would be ₹52,210 on 14 Dec 2026, which stays above your safety buffer.\n• Review the details and confirm below; you'll then approve the payment on PayPal."
+    },
+    {
+      "id": "pay-02",
+      "category": "checkout",
+      "paraphrase": false,
+      "question": "OK, go ahead with Pay in 4",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "prepare_paypal_checkout"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 35,
+      "tokens": 0,
+      "reply": "I've prepared a PayPal checkout for Laptop (₹75,000) using PayPal Pay in 4. Nothing has been charged.\n• Your lowest projected balance would be ₹52,210 on 14 Dec 2026, which stays above your safety buffer.\n• Review the details and confirm below; you'll then approve the payment on PayPal."
+    },
+    {
+      "id": "pay-03",
+      "category": "checkout",
+      "paraphrase": false,
+      "question": "Fine, pay for it in full now",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "prepare_paypal_checkout"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 36,
+      "tokens": 0,
+      "reply": "I've prepared a PayPal checkout for Phone (₹40,000) using Pay in full today. Nothing has been charged.\n• Your lowest projected balance would be ₹48,800 on 14 Nov 2026, which stays above your safety buffer.\n• Review the details and confirm below; you'll then approve the payment on PayPal."
+    },
+    {
+      "id": "pay-04",
+      "category": "checkout",
+      "paraphrase": true,
+      "question": "Sounds good, let's split it into four",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['get_financial_snapshot']",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 23,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "fu-01",
+      "category": "follow_up",
+      "paraphrase": false,
+      "question": "And what if my salary is also 10 days late?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 20,
+      "tokens": 0,
+      "reply": "Changes: Cancel Cult.fit, Netflix, Amazon Prime (saves ₹1,933/month); Delay income due 15 Nov 2026 by 10 days.\n• In 90 days your balance would be ₹1,74,190 instead of ₹1,68,391 (+₹5,799).\n• Lowest projected balance: ₹83,600 on 24 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: +₹1,933 per month, +₹23,196 per year."
+    },
+    {
+      "id": "fu-02",
+      "category": "follow_up",
+      "paraphrase": false,
+      "question": "What about 20 days?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 20,
+      "tokens": 0,
+      "reply": "Changes: Delay income due 15 Nov 2026 by 20 days.\n• In 90 days your balance would be ₹1,68,391 instead of ₹1,68,391 (+₹0).\n• Lowest projected balance: ₹62,498 on 04 Dec 2026 (baseline ₹88,800)."
+    },
+    {
+      "id": "fu-03",
+      "category": "follow_up",
+      "paraphrase": false,
+      "question": "What about ₹60,000?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 35,
+      "tokens": 0,
+      "reply": "Pay in full today. You can afford it..\n• Recommended: Pay in full today. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: lowest balance ₹28,800 on 14 Nov 2026, above your ₹20,000 buffer.\n• Wait until 15 Nov: lowest balance ₹48,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay in 4: lowest balance ₹63,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay Monthly · 12 mo: lowest balance ₹1,02,902 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹6,693 extra."
+    },
+    {
+      "id": "fu-04",
+      "category": "follow_up",
+      "paraphrase": true,
+      "question": "Make it the ₹999 premium tier instead",
+      "tool_ok": true,
+      "args_ok": false,
+      "why": "change types ['add_subscription', 'purchase'], expected ['add_subscription']",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": false,
+      "ms": 20,
+      "tokens": 0,
+      "reply": "Changes: Subscribe to Gym membership at ₹499/month, starting today; Premium: ₹999 on 03 Nov 2026.\n• In 90 days your balance would be ₹1,65,895 instead of ₹1,68,391 (-₹2,496).\n• Lowest projected balance: ₹87,302 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: -₹499 per month, -₹5,988 per year."
+    }
+  ]
+}

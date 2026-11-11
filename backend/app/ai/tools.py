@@ -89,6 +89,17 @@ TOOL_SPECS: list[dict[str, Any]] = [
                        "PayPal applied, conversion cost vs a reference rate, FX sensitivity and late-client risk.",
         "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
     {"type": "function", "function": {
+        "name": "prepare_paypal_checkout",
+        "description": "Draft a PayPal checkout for a purchase the user wants to go ahead with ('ok, pay for it', "
+                       "'buy it with Pay Later'). It re-runs the simulation and returns a proposal card. It does NOT "
+                       "charge anything: the user must review and confirm in the app, then approve on PayPal. Only "
+                       "call it when the user asks to pay or proceed.",
+        "parameters": {"type": "object", "required": ["amount"], "additionalProperties": False, "properties": {
+            "amount": {"type": "number", "exclusiveMinimum": 0, "description": "Purchase amount in INR"},
+            "label": {"type": "string", "description": "What is being bought"},
+            "option_id": {"type": "string", "description": "Payment option id from compare_payment_options "
+                          "(one of 'pay_now', 'pay_in_4', 'pay_monthly_12'). Omit to use the recommended payable option."}}}}},
+    {"type": "function", "function": {
         "name": "run_stress_test",
         "description": "How resilient are the user's finances? Runs a shock library (job loss, pay cut, medical bill, "
                        "costs +30%, late income, currency drop) and a spending Monte Carlo; returns runway and risk.",
@@ -110,6 +121,8 @@ def run_tool(name: str, args: dict, db: Session, user: User) -> ToolOutcome:
             return _cross_border(db, user)
         if name == "run_stress_test":
             return _stress(db, user)
+        if name == "prepare_paypal_checkout":
+            return _checkout_proposal(db, user, args)
         return ToolOutcome(name, args, False, {"error": f"Unknown tool {name}"})
     except ValidationError as exc:
         return ToolOutcome(name, args, False, {"error": "Invalid arguments", "details": [e["msg"] for e in exc.errors()][:5]})
@@ -182,7 +195,8 @@ def _stress(db: Session, user: User) -> ToolOutcome:
     a = repo.assumptions_for(user)
     r = stress_test(repo.build_user_profile(db, user, a), repo.load_transactions(db, user), a)
     summary = {
-        "resilience": r.resilience, "runway_months": float(r.runway_months), "monthly_burn": _f(r.monthly_burn),
+        "resilience": r.resilience, "current_balance": _f(repo.current_balance(db, user)),
+        "runway_months": float(r.runway_months), "monthly_burn": _f(r.monthly_burn),
         "chance_below_buffer": float(r.chance_below_buffer), "chance_below_zero": float(r.chance_below_zero),
         "shocks": [{"name": s.name, "min_balance": _f(s.min_balance), "min_balance_date": s.min_balance_date.isoformat(),
                     "solvent": s.solvent, "above_buffer": s.above_buffer} for s in r.shocks],
@@ -232,3 +246,59 @@ def _scenario(db: Session, user: User, args: dict) -> ToolOutcome:
     }
     return ToolOutcome("simulate_scenario", {"title": args.get("title"), "changes": raw}, True, summary, card,
                        r.summary + r.notes)
+
+
+def _checkout_proposal(db: Session, user: User, args: dict) -> ToolOutcome:
+    """A payment *proposal*: no order is created and nothing is charged.
+
+    The card carries everything the UI needs for the human confirmation step, which calls
+    POST /checkout/orders (acknowledged=true) and later capture (confirm=true). Unsafe options are
+    still proposable when the user insists, but the card flags them and demands an extra tick.
+    """
+    from app.core.config import get_settings
+
+    amount = Decimal(str(args["amount"]))
+    label = (args.get("label") or "Purchase").strip()[:80] or "Purchase"
+    c = planning.payment_comparison(db, user, amount, label)
+    payable = [o for o in c.options if o.action == "checkout"]
+    wanted = (args.get("option_id") or "").strip()
+    option = next((o for o in payable if o.id == wanted), None)
+    note = None
+    if option is None:
+        if wanted and any(o.id == wanted for o in c.options):
+            note = f"'{wanted}' is not paid through PayPal checkout (it is a plan to wait), so the recommended payable option is shown."
+        elif wanted:
+            note = f"There is no option '{wanted}' for this purchase, so the recommended payable option is shown."
+        option = next((o for o in payable if o.id == c.recommendation.option_id), None) or \
+            next((o for o in payable if o.safe), None) or (payable[0] if payable else None)
+    if option is None:
+        return ToolOutcome("prepare_paypal_checkout", {"amount": float(amount), "label": label}, False,
+                           {"error": "No PayPal payment option is available for this purchase."})
+    s = get_settings()
+    wait = next((o for o in c.options if o.action == "plan"), None)
+    summary = {
+        "status": "awaiting_user_confirmation", "charged": False, "amount": _f(amount), "label": label,
+        "option_id": option.id, "option_name": option.name, "funding": option.funding, "safe": option.safe,
+        "recommended": option.recommended, "payments": [{"on": p.on.isoformat(), "amount": _f(p.amount)} for p in option.payments],
+        "total_paid": _f(option.total_paid), "extra_cost": _f(option.extra_cost), "min_balance": _f(option.min_balance),
+        "min_balance_date": option.min_balance_date.isoformat(), "days_below_buffer": option.days_below_buffer,
+        "safety_buffer": _f(c.assumptions.safety_buffer), "paypal_environment": s.paypal_environment,
+        "safer_alternative": ({"option_id": wait.id, "name": wait.name, "get_it_on": wait.get_it_on.isoformat()}
+                              if wait and wait.safe and not option.safe else None),
+        "note": note,
+    }
+    lines = [f"I've prepared a PayPal checkout for {label} ({inr(amount)}) using {option.name}. Nothing has been charged."]
+    if option.safe:
+        lines.append(f"Your lowest projected balance would be {inr(option.min_balance)} on {fmt_date(option.min_balance_date)}, "
+                     "which stays above your safety buffer.")
+    else:
+        lines.append(f"Warning: this takes your projected balance down to {inr(option.min_balance)} on "
+                     f"{fmt_date(option.min_balance_date)}, below your {inr(c.assumptions.safety_buffer)} buffer.")
+        if summary["safer_alternative"]:
+            lines.append(f"Waiting until {fmt_date(wait.get_it_on)} would keep you safe.")
+    lines.append("Review the details and confirm below; you'll then approve the payment on PayPal.")
+    if note:
+        lines.append(note)
+    card = {"kind": "checkout_proposal", **summary, "terms_note": c.terms_note if option.funding == "paylater" else None}
+    return ToolOutcome("prepare_paypal_checkout", {"amount": float(amount), "label": label, "option_id": option.id},
+                       True, summary, card, lines)

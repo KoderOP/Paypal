@@ -1,0 +1,111 @@
+{
+  "benchmark": "forecast_backtest",
+  "commit": "47399ec",
+  "python": "3.14.2",
+  "eval_today": "2026-11-03",
+  "horizon_days": 30,
+  "buffer": 20000.0,
+  "purchase_sizes_pct_income": [
+    10.0,
+    20.0,
+    30.0,
+    40.0,
+    50.0,
+    60.0,
+    70.0,
+    80.0,
+    90.0,
+    100.0,
+    110.0,
+    120.0,
+    130.0,
+    140.0,
+    150.0
+  ],
+  "results": {
+    "clean": {
+      "aggregate": {
+        "flat": {
+          "n_forecasts": 300,
+          "path_mae": 23803,
+          "path_mae_pct_income": 36.29,
+          "low_point_mae": 21863,
+          "decision_accuracy": 0.7796,
+          "false_safe_rate": 0.2204,
+          "false_safe_share_of_unsafe": 0.3431
+        },
+        "linear_drift": {
+          "n_forecasts": 300,
+          "path_mae": 20034,
+          "path_mae_pct_income": 30.56,
+          "low_point_mae": 22571,
+          "decision_accuracy": 0.7731,
+          "false_safe_rate": 0.2269,
+          "false_safe_share_of_unsafe": 0.3532
+        },
+        "seasonal_naive": {
+          "n_forecasts": 300,
+          "path_mae": 7016,
+          "path_mae_pct_income": 10.68,
+          "low_point_mae": 6630,
+          "decision_accuracy": 0.9318,
+          "false_safe_rate": 0.0389,
+          "false_safe_share_of_unsafe": 0.0605
+        },
+        "twin": {
+          "n_forecasts": 300,
+          "path_mae": 2736,
+          "path_mae_pct_income": 4.16,
+          "low_point_mae": 3039,
+          "decision_accuracy": 0.9682,
+          "false_safe_rate": 0.0256,
+          "false_safe_share_of_unsafe": 0.0398
+        }
+      },
+      "n_histories": 60,
+      "cutoffs_per_history": 5
+    },
+    "perturbed": {
+      "aggregate": {
+        "flat": {
+          "n_forecasts": 300,
+          "path_mae": 22789,
+          "path_mae_pct_income": 35.24,
+          "low_point_mae": 24034,
+          "decision_accuracy": 0.772,
+          "false_safe_rate": 0.228,
+          "false_safe_share_of_unsafe": 0.2856
+        },
+        "linear_drift": {
+          "n_forecasts": 300,
+          "path_mae": 20875,
+          "path_mae_pct_income": 32.27,
+          "low_point_mae": 24605,
+          "decision_accuracy": 0.7662,
+          "false_safe_rate": 0.2338,
+          "false_safe_share_of_unsafe": 0.2928
+        },
+        "seasonal_naive": {
+          "n_forecasts": 300,
+          "path_mae": 12974,
+          "path_mae_pct_income": 20.02,
+          "low_point_mae": 9087,
+          "decision_accuracy": 0.9262,
+          "false_safe_rate": 0.0458,
+          "false_safe_share_of_unsafe": 0.0573
+        },
+        "twin": {
+          "n_forecasts": 300,
+          "path_mae": 10003,
+          "path_mae_pct_income": 15.56,
+          "low_point_mae": 6143,
+          "decision_accuracy": 0.9504,
+          "false_safe_rate": 0.0347,
+          "false_safe_share_of_unsafe": 0.0434
+        }
+      },
+      "n_histories": 60,
+      "cutoffs_per_history": 5
+    }
+  }
+}

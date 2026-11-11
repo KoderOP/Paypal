@@ -1,0 +1,52 @@
+{
+  "description": "FINORA agent benchmark. Each case is scored on (1) choosing the right engine tool, (2) passing the right arguments, (3) a fully grounded final answer. 'turns' are asked in order with the returned context carried forward; only the last turn is scored. 'paraphrase' marks wording the deterministic planner was not written for.",
+  "cases": [
+    {"id": "buy-01", "category": "purchase", "question": "What happens if I buy a laptop worth ₹75,000 this month?", "expect": {"tool": "compare_payment_options", "args": {"amount": 75000}}},
+    {"id": "buy-02", "category": "purchase", "question": "Can I afford a ₹40,000 phone?", "expect": {"tool": "compare_payment_options", "args": {"amount": 40000}}},
+    {"id": "buy-03", "category": "purchase", "question": "Should I buy a ₹1.5 lakh scooter or use Pay Later?", "expect": {"tool": "compare_payment_options", "args": {"amount": 150000}}},
+    {"id": "buy-04", "category": "purchase", "paraphrase": true, "question": "Thinking of getting a PS5 for 55k. Split it or pay outright?", "expect": {"tool": "compare_payment_options", "args": {"amount": 55000}}},
+    {"id": "buy-05", "category": "purchase", "paraphrase": true, "question": "My sister's wedding gift will be around twenty-five thousand rupees, is that ok right now?", "expect": {"tool": "compare_payment_options", "args": {"amount": 25000}}},
+    {"id": "buy-06", "category": "purchase", "paraphrase": true, "question": "Is splurging 90000 on a new camera a bad idea?", "expect": {"tool": "compare_payment_options", "args": {"amount": 90000}}},
+
+    {"id": "aff-01", "category": "affordability", "question": "What's the most I can spend this month?", "expect": {"tool": "find_affordability"}},
+    {"id": "aff-02", "category": "affordability", "question": "When can I safely buy a ₹1.2 lakh vacation?", "expect": {"tool": "find_affordability", "args": {"amount": 120000}}},
+    {"id": "aff-03", "category": "affordability", "question": "How much can I spend today without going below my buffer?", "expect": {"tool": "find_affordability"}},
+    {"id": "aff-04", "category": "affordability", "paraphrase": true, "question": "What's my spending headroom before payday?", "expect": {"tool": "find_affordability"}},
+    {"id": "aff-05", "category": "affordability", "paraphrase": true, "question": "Earliest date I could drop ₹60,000 on a sofa?", "expect": {"tool": "find_affordability", "args": {"amount": 60000}}},
+
+    {"id": "scn-01", "category": "scenario", "question": "What if I cancel three subscriptions?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "cancel_subscriptions"}]}},
+    {"id": "scn-02", "category": "scenario", "question": "What if my income is delayed by 15 days?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "income_delay", "days": 15}]}},
+    {"id": "scn-03", "category": "scenario", "question": "What if I increase my monthly savings by 10%?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "increase_savings", "percent": 10}]}},
+    {"id": "scn-04", "category": "scenario", "question": "What if I add a ₹499/month gym membership?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "add_subscription", "amount": 499}]}},
+    {"id": "scn-05", "category": "scenario", "question": "What if I lose my job for 2 months?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "income_loss", "months": 2}]}},
+    {"id": "scn-06", "category": "scenario", "question": "What if I cancel Netflix and Spotify and my salary is 2 weeks late?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "cancel_subscriptions"}, {"type": "income_delay", "days": 14}]}},
+    {"id": "scn-07", "category": "scenario", "question": "What if I have a ₹30,000 medical emergency next week?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "unexpected_payment", "amount": 30000}]}},
+    {"id": "scn-08", "category": "scenario", "question": "What if my spending goes up by 20%?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "expense_increase", "percent": 20}]}},
+    {"id": "scn-09", "category": "scenario", "question": "What if USD/INR drops 3%?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "fx_change", "percent": -3}]}},
+    {"id": "scn-10", "category": "scenario", "paraphrase": true, "question": "Suppose I get laid off next month and it takes me three months to find work.", "expect": {"tool": "simulate_scenario", "changes": [{"type": "income_loss", "months": 3}]}},
+    {"id": "scn-11", "category": "scenario", "paraphrase": true, "question": "I'm planning to trim my day-to-day spending by 15 percent. How does that change things?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "expense_increase", "percent": -15}]}},
+    {"id": "scn-12", "category": "scenario", "paraphrase": true, "question": "Drop my Amazon Prime and YouTube Premium, how much better off am I?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "cancel_subscriptions"}]}},
+    {"id": "scn-13", "category": "scenario", "paraphrase": true, "question": "Acme pays me a fortnight late every month from now on. Will I be ok?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "income_delay", "days": 14}]}},
+    {"id": "scn-14", "category": "scenario", "paraphrase": true, "question": "My car needs an urgent ₹45,000 repair. What does that do to my cash?", "expect": {"tool": "simulate_scenario", "changes": [{"type": "unexpected_payment", "amount": 45000}]}},
+
+    {"id": "str-01", "category": "stress", "question": "How resilient are my finances?", "expect": {"tool": "run_stress_test"}},
+    {"id": "str-02", "category": "stress", "question": "How long would my money last in a worst case?", "expect": {"tool": "run_stress_test"}},
+    {"id": "str-03", "category": "stress", "paraphrase": true, "question": "Am I prepared if things go badly?", "expect": {"tool": "run_stress_test"}},
+
+    {"id": "xb-01", "category": "cross_border", "question": "How much am I losing to PayPal fees?", "expect": {"tool": "get_cross_border_summary"}},
+    {"id": "xb-02", "category": "cross_border", "question": "What exchange rate did PayPal give me on my USD income?", "expect": {"tool": "get_cross_border_summary"}},
+
+    {"id": "snap-01", "category": "snapshot", "question": "How am I doing financially?", "expect": {"tool": "get_financial_snapshot"}},
+    {"id": "snap-02", "category": "snapshot", "paraphrase": true, "question": "Give me a quick summary of my money.", "expect": {"tool": "get_financial_snapshot"}},
+
+    {"id": "pay-01", "category": "checkout", "question": "Pay with PayPal for a ₹75,000 laptop using Pay in 4", "expect": {"tool": "prepare_paypal_checkout", "args": {"amount": 75000, "option_id": "pay_in_4"}}},
+    {"id": "pay-02", "category": "checkout", "turns": ["Should I buy a ₹75,000 laptop?", "OK, go ahead with Pay in 4"], "expect": {"tool": "prepare_paypal_checkout", "args": {"amount": 75000, "option_id": "pay_in_4"}}},
+    {"id": "pay-03", "category": "checkout", "turns": ["Can I afford a ₹40,000 phone?", "Fine, pay for it in full now"], "expect": {"tool": "prepare_paypal_checkout", "args": {"amount": 40000, "option_id": "pay_now"}}},
+    {"id": "pay-04", "category": "checkout", "paraphrase": true, "turns": ["Should I buy a ₹75,000 laptop?", "Sounds good, let's split it into four"], "expect": {"tool": "prepare_paypal_checkout", "args": {"amount": 75000, "option_id": "pay_in_4"}}},
+
+    {"id": "fu-01", "category": "follow_up", "turns": ["What if I cancel three subscriptions?", "And what if my salary is also 10 days late?"], "expect": {"tool": "simulate_scenario", "changes": [{"type": "cancel_subscriptions"}, {"type": "income_delay", "days": 10}]}},
+    {"id": "fu-02", "category": "follow_up", "turns": ["What if my income is delayed by 15 days?", "What about 20 days?"], "expect": {"tool": "simulate_scenario", "changes": [{"type": "income_delay", "days": 20}]}},
+    {"id": "fu-03", "category": "follow_up", "turns": ["Can I afford a ₹40,000 phone?", "What about ₹60,000?"], "expect": {"tool": "compare_payment_options", "args": {"amount": 60000}}},
+    {"id": "fu-04", "category": "follow_up", "paraphrase": true, "turns": ["What if I add a ₹499/month gym membership?", "Make it the ₹999 premium tier instead"], "expect": {"tool": "simulate_scenario", "changes": [{"type": "add_subscription", "amount": 999}]}}
+  ]
+}

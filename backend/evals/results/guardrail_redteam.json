@@ -1,0 +1,170 @@
+{
+  "benchmark": "guardrail_redteam",
+  "commit": "47399ec",
+  "python": "3.14.2",
+  "eval_today": "2026-11-03",
+  "summary": {
+    "faithful_n": 154,
+    "faithful_acceptance_rate": 1.0,
+    "false_rejection_rate": 0.0,
+    "corrupted_n": 262,
+    "corruption_detection_rate": 0.977,
+    "by_variant": {
+      "date_shift_3d": {
+        "n": 38,
+        "detection_rate": 1.0
+      },
+      "digit_transposition": {
+        "n": 27,
+        "detection_rate": 1.0
+      },
+      "engine_reply": {
+        "n": 40,
+        "acceptance_rate": 1.0
+      },
+      "fabricated_sentence": {
+        "n": 40,
+        "detection_rate": 0.95
+      },
+      "lakh_k_notation": {
+        "n": 38,
+        "acceptance_rate": 1.0
+      },
+      "long_month_dates": {
+        "n": 38,
+        "acceptance_rate": 1.0
+      },
+      "percent_plus_5": {
+        "n": 5,
+        "detection_rate": 1.0
+      },
+      "rounded_to_rupee": {
+        "n": 38,
+        "acceptance_rate": 1.0
+      },
+      "scale_x0.5": {
+        "n": 38,
+        "detection_rate": 0.921
+      },
+      "scale_x1.05": {
+        "n": 38,
+        "detection_rate": 1.0
+      },
+      "scale_x1.2": {
+        "n": 38,
+        "detection_rate": 0.974
+      },
+      "small_error_x1.005": {
+        "n": 38,
+        "detection_rate": 1.0
+      }
+    }
+  },
+  "ablation_flat_1pct_tolerance": {
+    "faithful_n": 154,
+    "faithful_acceptance_rate": 1.0,
+    "false_rejection_rate": 0.0,
+    "corrupted_n": 262,
+    "corruption_detection_rate": 0.763,
+    "by_variant": {
+      "date_shift_3d": {
+        "n": 38,
+        "detection_rate": 1.0
+      },
+      "digit_transposition": {
+        "n": 27,
+        "detection_rate": 0.296
+      },
+      "engine_reply": {
+        "n": 40,
+        "acceptance_rate": 1.0
+      },
+      "fabricated_sentence": {
+        "n": 40,
+        "detection_rate": 0.95
+      },
+      "lakh_k_notation": {
+        "n": 38,
+        "acceptance_rate": 1.0
+      },
+      "long_month_dates": {
+        "n": 38,
+        "acceptance_rate": 1.0
+      },
+      "percent_plus_5": {
+        "n": 5,
+        "detection_rate": 1.0
+      },
+      "rounded_to_rupee": {
+        "n": 38,
+        "acceptance_rate": 1.0
+      },
+      "scale_x0.5": {
+        "n": 38,
+        "detection_rate": 0.921
+      },
+      "scale_x1.05": {
+        "n": 38,
+        "detection_rate": 1.0
+      },
+      "scale_x1.2": {
+        "n": 38,
+        "detection_rate": 1.0
+      },
+      "small_error_x1.005": {
+        "n": 38,
+        "detection_rate": 0.0
+      }
+    }
+  },
+  "misses": [
+    {
+      "case": "aff-02",
+      "variant": "scale_x1.2",
+      "expect": "fail",
+      "passed": true,
+      "passed_flat_1pct": false,
+      "text": "027, above your ₹20,000 buffer.\n• PayPal Pay in 4: drops to ₹7,531 on 14 Jan 2027, below your ₹20,000 buffer for 13 day(s).\n• PayPal Pay Monthly · 12 mo: lowest balance ₹97,344 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹13,387 extra."
+    },
+    {
+      "case": "aff-02",
+      "variant": "scale_x0.5",
+      "expect": "fail",
+      "passed": true,
+      "passed_flat_1pct": true,
+      "text": "027, above your ₹20,000 buffer.\n• PayPal Pay in 4: drops to ₹7,531 on 14 Jan 2027, below your ₹20,000 buffer for 13 day(s).\n• PayPal Pay Monthly · 12 mo: lowest balance ₹97,344 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹13,387 extra."
+    },
+    {
+      "case": "scn-01",
+      "variant": "scale_x0.5",
+      "expect": "fail",
+      "passed": true,
+      "passed_flat_1pct": true,
+      "text": ", Amazon Prime (saves ₹1,933/month).\n• In 90 days your balance would be ₹1,74,190 instead of ₹1,68,391 (+₹2,900).\n• Lowest projected balance: ₹90,434 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: +₹1,933 per month, +₹23,196 per year."
+    },
+    {
+      "case": "scn-05",
+      "variant": "fabricated_sentence",
+      "expect": "fail",
+      "passed": true,
+      "passed_flat_1pct": true,
+      "text": "ncome for 2 month(s) (₹1,30,000 less).\n• In 90 days your balance would be ₹38,391 instead of ₹1,68,391 (-₹1,30,000).\n• Lowest projected balance: -₹2,469 on 14 Jan 2027 (baseline ₹88,800).\nYou'd also save about ₹1,48,700 a year by switching."
+    },
+    {
+      "case": "scn-10",
+      "variant": "fabricated_sentence",
+      "expect": "fail",
+      "passed": true,
+      "passed_flat_1pct": true,
+      "text": "ome for 3 month(s) (₹1,95,000 less).\n• In 90 days your balance would be -₹26,609 instead of ₹1,68,391 (-₹1,95,000).\n• Lowest projected balance: -₹26,609 on 01 Feb 2027 (baseline ₹88,800).\nYou'd also save about ₹1,48,700 a year by switching."
+    },
+    {
+      "case": "fu-04",
+      "variant": "scale_x0.5",
+      "expect": "fail",
+      "passed": true,
+      "passed_flat_1pct": true,
+      "text": "ng today; Premium: ₹500 on 03 Nov 2026.\n• In 90 days your balance would be ₹1,65,895 instead of ₹1,68,391 (-₹2,496).\n• Lowest projected balance: ₹87,302 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: -₹499 per month, -₹5,988 per year."
+    }
+  ]
+}

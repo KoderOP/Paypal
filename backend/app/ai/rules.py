@@ -66,6 +66,11 @@ def _label(text: str) -> str:
         word = m.group(1).strip()
         if word not in ("it", "something", "one", "them", "that"):
             return word[:1].upper() + word[1:]
+    # "a ₹75,000 laptop", "₹1.2 lakh vacation": the noun right after the amount.
+    m = re.search(r"(?:₹|rs\.?|inr)\s*\d[\d,]*(?:\.\d+)?\s*(?:k|lakhs?|lac|l)?\s+(?!worth|for|on|in|at|this|next|today|"
+                  r"tomorrow|per|a|an|the|and|or|using|with|via|through|by|to|from|of|now)([a-z][a-z\-]{2,20})\b", text)
+    if m:
+        return m.group(1).capitalize()
     return "Purchase"
 
 
@@ -104,9 +109,34 @@ def _fx_change(t: str, pct: Decimal) -> dict | None:
     return {"type": "fx_change", "percent": float(pct) * sign, "currency": cur}
 
 
+CHECKOUT = re.compile(r"\b(go ahead|proceed|check ?out|pay for (it|this|that)|buy it|let'?s do it|place (the|an) order|"
+                      r"pay (it )?(now|with paypal|via paypal|through paypal)|confirm (the )?(purchase|payment)|"
+                      r"(use|with|via|choose|pick|go with) (paypal )?(pay in 4|pay later|pay monthly))\b")
+
+
+def checkout_option(t: str) -> str | None:
+    if re.search(r"pay in 4|in 4|four (payments|instal)", t):
+        return "pay_in_4"
+    if re.search(r"monthly|12 months|pay later", t):
+        return "pay_monthly_12"
+    if re.search(r"in full|full amount|pay now|right now|today|at once", t):
+        return "pay_now"
+    return None
+
+
+def _checkout_call(t: str, amount: Decimal | float, label: str) -> tuple[str, dict]:
+    args: dict = {"amount": float(amount), "label": label}
+    opt = checkout_option(t)
+    if opt:
+        args["option_id"] = opt
+    return ("prepare_paypal_checkout", args)
+
+
 def plan_calls(question: str, subscription_names: list[str], payer_names: list[str] | None = None) -> list[tuple[str, dict]]:
     t = " ".join(question.lower().split())
     amount = find_amount(t)
+    if amount and CHECKOUT.search(t) and not re.search(r"\bwhat if\b|\bshould i\b|\bcan i\b", t):
+        return [_checkout_call(t, amount, _label(t))]
     changes: list[dict] = []
     payers = [p for p in (payer_names or []) if p.lower() in t or p.split()[0].lower() in t.split()]
 
@@ -193,7 +223,7 @@ def _context_changes(context: dict | None) -> list[dict]:
     args = context.get("arguments") or {}
     if context.get("tool") == "simulate_scenario":
         return [dict(c) for c in args.get("changes", []) if isinstance(c, dict) and c.get("type")]
-    if context.get("tool") == "compare_payment_options" and args.get("amount"):
+    if context.get("tool") in ("compare_payment_options", "prepare_paypal_checkout") and args.get("amount"):
         return [{"type": "purchase", "amount": args["amount"], "label": args.get("label") or "Purchase"}]
     return []
 
@@ -230,6 +260,13 @@ def plan_followup(question: str, context: dict | None, subscription_names: list[
     calls = plan_calls(question, subscription_names, payer_names)
     t = " ".join(question.lower().split())
     prev = _context_changes(context)
+    if context and CHECKOUT.search(t) and calls[0][0] != "prepare_paypal_checkout":
+        purchase = next((c for c in prev if c["type"] == "purchase"), None)
+        if purchase is None and context.get("tool") == "prepare_paypal_checkout":
+            a = context.get("arguments") or {}
+            purchase = {"amount": a.get("amount"), "label": a.get("label")} if a.get("amount") else None
+        if purchase:
+            return [_checkout_call(t, purchase["amount"], purchase.get("label") or "Purchase")], "your previous question"
     if not context or not FOLLOW_UP.search(t):
         return calls, None
     name, args = calls[0]
