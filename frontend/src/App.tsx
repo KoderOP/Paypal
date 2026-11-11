@@ -20,6 +20,8 @@ const SignIn = lazy(() => import('./pages/SignIn'))
 const Subscriptions = lazy(() => import('./pages/Subscriptions'))
 const Assistant = lazy(() => import('./pages/Assistant'))
 const Checkout = lazy(() => import('./pages/Checkout'))
+const Compare = lazy(() => import('./pages/Compare'))
+const CrossBorder = lazy(() => import('./pages/CrossBorder'))
 
 // Pages that work before any data exists; everything else redirects to onboarding.
 const OPEN_ROUTES = ['/get-started', '/paypal', '/settings', '/stress', '/signin']
@@ -49,6 +51,8 @@ export default function App() {
                 <Route path="/paypal" element={<PayPal />} />
                 <Route path="/twin" element={<Twin />} />
                 <Route path="/simulator" element={<Simulator />} />
+                <Route path="/compare" element={<Compare />} />
+                <Route path="/crossborder" element={<CrossBorder />} />
                 <Route path="/checkout/:id" element={<Checkout />} />
                 <Route path="/subscriptions" element={<Subscriptions />} />
                 <Route path="/assistant" element={<Assistant />} />

@@ -170,6 +170,25 @@ class ScenarioRequest(BaseModel):
     safety_buffer: Money | None = Field(None, ge=0)
 
 
+class NamedScenario(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    changes: list[dict] = Field(min_length=1, max_length=8)
+
+
+class CompareRequest(BaseModel):
+    scenarios: list[NamedScenario] = Field(min_length=1, max_length=4)
+    safety_buffer: Money | None = Field(None, ge=0)
+
+
+class AlertDismiss(BaseModel):
+    id: str = Field(min_length=1, max_length=300)
+
+
+class ReferenceRate(BaseModel):
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    rate: Money | None = Field(None, gt=0, le=Decimal("100000"), description="INR per unit; null clears it")
+
+
 # ---- PayPal checkout (Orders API) ---------------------------------------------------------------------
 class CheckoutCreate(BaseModel):
     amount: Money = Field(gt=0, le=Decimal("100000000"))
@@ -235,5 +254,13 @@ class ChatMessage(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
 
 
+class ChatContext(BaseModel):
+    """What the previous answer computed, sent back by the client so follow-ups can build on it."""
+
+    tool: str = Field(max_length=60)
+    arguments: dict = Field(default_factory=dict)
+
+
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=20)
+    context: ChatContext | None = None

@@ -1,4 +1,4 @@
-"""API tests: checkout (Orders), subscriptions, Sign in with PayPal, planning endpoints and the assistant.
+﻿"""API tests: checkout (Orders), subscriptions, Sign in with PayPal, planning endpoints and the assistant.
 
 PayPal and the LLM are replaced by in-memory fakes through FastAPI dependency overrides,
 so no network or credentials are needed.
@@ -16,6 +16,7 @@ from app.core.config import Settings, get_settings
 from app.engine.types import add_months
 from app.integrations.paypal.client import PayPalClient, get_paypal_client
 from app.main import app
+from tests.conftest import TODAY
 
 ORDER_IDS = itertools.count(1)  # PayPal order ids are globally unique; the test DB outlives each fake
 
@@ -191,7 +192,7 @@ def test_checkout_cancel_and_plan(client, fake_pp):
     assert client.get(f"/api/checkout/orders/{order['id']}").json()["status"] == "cancelled"
     wait = client.post("/api/checkout/orders", json={"amount": 1000, "label": "Shoes", "option_id": "wait", "acknowledged": True})
     assert wait.status_code == 422  # "wait" is planned, not paid
-    planned = client.post("/api/checkout/plan", json={"amount": 1000, "label": "Shoes", "on": date.today().isoformat()})
+    planned = client.post("/api/checkout/plan", json={"amount": 1000, "label": "Shoes", "on": TODAY.isoformat()})
     assert planned.status_code == 201 and planned.json()["title"] == "Planned: Shoes"
 
 
@@ -238,10 +239,10 @@ def _subs_monthly(client) -> float:
 
 def test_add_edit_remove_subscription(client):
     before = _subs_monthly(client)
-    past = (date.today() - timedelta(days=1)).isoformat()
+    past = (TODAY - timedelta(days=1)).isoformat()
     assert client.post("/api/subscriptions/added", json={"name": "Gym", "amount": 1500, "next_billing_date": past}).status_code == 422
     added = client.post("/api/subscriptions/added", json={"name": "Cult Gym Pro", "amount": 1500,
-                                                          "next_billing_date": date.today().isoformat()})
+                                                          "next_billing_date": TODAY.isoformat()})
     assert added.status_code == 201, added.text
     a = added.json()
     assert _subs_monthly(client) == before + 1500
@@ -250,7 +251,7 @@ def test_add_edit_remove_subscription(client):
     assert row["source"] == "manual" and row["added"]["id"] == a["id"] and row["occurrences"] == 0
 
     edited =client.put(f"/api/subscriptions/added/{a['id']}", json={"name": "Cult Gym Pro", "amount": 2000,
-                                                                     "next_billing_date": date.today().isoformat()})
+                                                                     "next_billing_date": TODAY.isoformat()})
     assert edited.json()["amount"] == 2000 and _subs_monthly(client) == before + 2000
 
     # Mark cancelled / restore works on added items too.
@@ -266,7 +267,7 @@ def test_add_edit_remove_subscription(client):
 def test_added_subscription_not_double_counted_once_detected(client):
     before = _subs_monthly(client)
     a = client.post("/api/subscriptions/added", json={"name": "Netflix", "amount": 649,
-                                                      "next_billing_date": date.today().isoformat()}).json()
+                                                      "next_billing_date": TODAY.isoformat()}).json()
     ov = client.get("/api/subscriptions").json()
     assert _subs_monthly(client) == before  # Netflix is already detected from history
     assert [s["id"] for s in ov["superseded"]] == [a["id"]]
@@ -293,7 +294,7 @@ def test_what_if_i_subscribe(client):
     r = client.post("/api/simulations/scenario", json={"changes": [{"type": "add_subscription", "amount": 499, "label": "Gym"}]})
     body = r.json()
     assert r.status_code == 200 and body["monthly_effect"] == -499
-    today = date.today()
+    today = TODAY
     charges = sum(1 for k in range(5) if add_months(today, k, today.day) <= today + timedelta(days=90))
     assert body["impacts"][-1]["delta"] == -499 * charges  # one charge today, then monthly
     chat = client.post("/api/assistant/chat", json={"messages": [

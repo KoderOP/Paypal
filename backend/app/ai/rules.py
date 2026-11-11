@@ -87,10 +87,28 @@ def _subscription_label(text: str) -> str:
     return "New subscription"
 
 
-def plan_calls(question: str, subscription_names: list[str]) -> list[tuple[str, dict]]:
+CURRENCY_WORDS = r"\b(usd|dollars?|eur|euros?|gbp|pounds?|rupee|inr|exchange rate|fx|forex|currency)\b"
+
+
+def _fx_change(t: str, pct: Decimal) -> dict | None:
+    """'USD/INR drops 3%' → -3 · 'dollar rises 2%' → +2 · 'rupee strengthens 3%' → -3 (rupee is the subject)."""
+    if not re.search(CURRENCY_WORDS, t):
+        return None
+    cur = "EUR" if re.search(r"\b(eur|euros?)\b", t) else "GBP" if re.search(r"\b(gbp|pounds?)\b", t) else "USD"
+    down = re.search(r"(drop|fall|fell|weaken|\bdown\b|decline|depreciat|crash|lower|dip|slide)", t)
+    up = re.search(r"(rise|rose|gain|strengthen|\bup\b|appreciat|higher|jump|climb|increase)", t)
+    sign = 1 if up and not down else -1
+    rupee_subject = re.search(r"\b(rupee|inr)\b", t) and not re.search(r"(usd|eur|gbp)\s*/\s*inr|\bdollars?\b|\beuros?\b|\bpounds?\b", t)
+    if rupee_subject:
+        sign = -sign
+    return {"type": "fx_change", "percent": float(pct) * sign, "currency": cur}
+
+
+def plan_calls(question: str, subscription_names: list[str], payer_names: list[str] | None = None) -> list[tuple[str, dict]]:
     t = " ".join(question.lower().split())
     amount = find_amount(t)
     changes: list[dict] = []
+    payers = [p for p in (payer_names or []) if p.lower() in t or p.split()[0].lower() in t.split()]
 
     if "cancel" in t and ("subscri" in t or any(n.lower() in t for n in subscription_names)):
         names = [n for n in subscription_names if n.lower() in t]
@@ -103,12 +121,18 @@ def plan_calls(question: str, subscription_names: list[str]) -> list[tuple[str, 
             count = 1 if re.search(r"\ba subscription\b", t) else 3
         changes.append({"type": "cancel_subscriptions", "names": names, "count": count})
 
-    if re.search(r"(salary|income|pay ?check|payday|wage|client payment|payment from)", t) and \
+    if (payers or re.search(r"(salary|income|pay ?check|payday|wage|client|payment from)", t)) and \
             re.search(r"(delay|late|postpone|held up|pushed)", t):
-        changes.append({"type": "income_delay", "days": _days(t) or 15, "all_future": "every" in t or "all" in t})
+        change = {"type": "income_delay", "days": _days(t) or 15, "all_future": "every" in t or "all" in t}
+        if payers:
+            change["merchant"] = payers[0]
+        changes.append(change)
 
     pct = _percent(t)
-    if pct and re.search(r"sav(e|ing|ings)|sip|invest", t):
+    fx = _fx_change(t, pct) if pct else None
+    if fx:
+        changes.append(fx)
+    elif pct and re.search(r"sav(e|ing|ings)|sip|invest", t):
         changes.append({"type": "increase_savings", "percent": float(pct)})
     elif pct and re.search(r"expense|spending|cost|bills|prices", t):
         sign = -1 if re.search(r"(cut|reduce|lower|decrease|less|drop)", t) else 1
@@ -139,4 +163,88 @@ def plan_calls(question: str, subscription_names: list[str]) -> list[tuple[str, 
                                                                      {"amount": float(amount), "label": _label(t)})]
     if amount and (buying or re.search(r"(split|instal|emi|pay later|pay in 4|wait)", t)):
         return [("compare_payment_options", {"amount": float(amount), "label": _label(t)})]
+    if re.search(r"(withdraw|paypal fees?|\bfees?\b|conversion|exchange rate|cross.border|foreign|forex|"
+                 r"usd income|dollar income|international|clients?)", t):
+        return [("get_cross_border_summary", {})]
     return [("get_financial_snapshot", {})]
+
+
+# ---- Follow-ups --------------------------------------------------------------------------------------
+FOLLOW_UP = re.compile(r"^(and|also|plus|then|now|what about|how about|instead|but|ok|okay|what if .*\b(also|too)\b)\b"
+                       r"|\b(also|too|as well|on top|instead|in addition|additionally)\b")
+
+
+def _context_changes(context: dict | None) -> list[dict]:
+    if not context:
+        return []
+    args = context.get("arguments") or {}
+    if context.get("tool") == "simulate_scenario":
+        return [dict(c) for c in args.get("changes", []) if isinstance(c, dict) and c.get("type")]
+    if context.get("tool") == "compare_payment_options" and args.get("amount"):
+        return [{"type": "purchase", "amount": args["amount"], "label": args.get("label") or "Purchase"}]
+    return []
+
+
+def _merge(prev: list[dict], new: list[dict]) -> list[dict]:
+    """New changes replace earlier ones of the same kind (e.g. 15 → 20 days late); other kinds stack."""
+    out = [dict(c) for c in prev]
+    for c in new:
+        same = next((i for i, p in enumerate(out) if p["type"] == c["type"]
+                     and p.get("merchant") == c.get("merchant")), None)
+        if same is None:
+            out.append(c)
+        else:
+            out[same] = c
+    return out[:8]
+
+
+def describe_changes(changes: list[dict]) -> str:
+    names = {"purchase": "the purchase", "cancel_subscriptions": "cancelled subscriptions",
+             "income_delay": "the income delay", "increase_savings": "higher savings", "expense_increase": "the spending change",
+             "unexpected_payment": "the unexpected payment", "add_subscription": "the new subscription",
+             "fx_change": "the exchange-rate move"}
+    parts = [c.get("label") if c["type"] in ("purchase", "add_subscription") and c.get("label") else names.get(c["type"], c["type"])
+             for c in changes]
+    return ", ".join(dict.fromkeys(p for p in parts if p))
+
+
+def plan_followup(question: str, context: dict | None, subscription_names: list[str],
+                  payer_names: list[str] | None = None) -> tuple[list[tuple[str, dict]], str | None]:
+    """Like plan_calls, but a follow-up ("and what if my salary is also late?") builds on the previous answer.
+
+    Returns the calls plus a short description of what was carried forward (None when starting fresh).
+    """
+    calls = plan_calls(question, subscription_names, payer_names)
+    t = " ".join(question.lower().split())
+    prev = _context_changes(context)
+    if not context or not FOLLOW_UP.search(t):
+        return calls, None
+    name, args = calls[0]
+
+    if name == "simulate_scenario" and prev:
+        return [("simulate_scenario", {"changes": _merge(prev, args["changes"])})], describe_changes(prev)
+    if name == "compare_payment_options" and prev and context.get("tool") == "simulate_scenario":
+        purchase = {"type": "purchase", "amount": args["amount"], "label": args["label"]}
+        return [("simulate_scenario", {"changes": _merge(prev, [purchase])})], describe_changes(prev)
+    if name != "get_financial_snapshot":
+        return calls, None
+
+    # Nothing new was named: treat it as a tweak of the previous numbers ("what about ₹50,000?", "and 20 days?").
+    amount, days, pct = find_amount(t), _days(t), _percent(t)
+    prev_tool, prev_args = context.get("tool"), dict(context.get("arguments") or {})
+    if prev_tool in ("compare_payment_options", "find_affordability") and amount:
+        return [(prev_tool, {**prev_args, "amount": float(amount)})], "your previous question"
+    if prev_tool == "simulate_scenario" and prev:
+        tweaked = [dict(c) for c in prev]
+        hit = False
+        for c in tweaked:
+            if amount and not hit and c["type"] in ("purchase", "unexpected_payment", "add_subscription"):
+                c["amount"], hit = float(amount), True
+            elif days and c["type"] == "income_delay":
+                c["days"], hit = days, True
+            elif pct is not None and c["type"] in ("fx_change", "increase_savings", "expense_increase"):
+                sign = -1 if c["type"] == "fx_change" and c.get("percent", 0) < 0 else 1
+                c["percent"], hit = float(pct) * sign, True
+        if hit:
+            return [("simulate_scenario", {"changes": tweaked})], describe_changes(prev)
+    return calls, None

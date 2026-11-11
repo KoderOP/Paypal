@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarClock, FlaskConical, PiggyBank, Repeat, TrendingUp, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { AlertsCard } from '../components/AlertsCard'
 import { CashflowChart } from '../components/charts/CashflowChart'
 import { MonthlyBars } from '../components/charts/MonthlyBars'
 import { DataSourceBadge } from '../components/DataSourceBadge'
@@ -37,10 +38,12 @@ export default function Overview() {
         actions={<DataSourceBadge source={data.data_source} />}
       />
 
+      <AlertsCard />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard emphasis label="Available balance" icon={<Wallet className="h-4 w-4" />} value={inr(kpis.current_balance)}
-          hint={daysToIncome !== null ? `Next salary in ${daysToIncome} days · ${fmtShort(kpis.next_income_date!)}` : 'No regular income detected'} />
-        <StatCard kind="derived" label="Monthly income" icon={<ArrowUpRight className="h-4 w-4 text-brand-600" />} value={inr(kpis.monthly_income)} hint="Regular, detected from salary credits" />
+          hint={daysToIncome !== null ? `Next income in ${daysToIncome} days · ${fmtShort(kpis.next_income_date!)}` : 'No regular income detected'} />
+        <StatCard kind="derived" label="Monthly income" icon={<ArrowUpRight className="h-4 w-4 text-brand-600" />} value={inr(kpis.monthly_income)} hint="Regular, detected from recurring credits" />
         <StatCard kind="derived" label="Monthly spending" icon={<ArrowDownRight className="h-4 w-4 text-navy-400" />} value={inr(kpis.monthly_expenditure)} hint="Average of last 90 days, excl. investments" />
         <StatCard kind="derived" label="Savings rate" icon={<PiggyBank className="h-4 w-4 text-navy-400" />} value={pct(kpis.savings_rate)} hint={`incl. ${inr(kpis.monthly_investments)}/mo invested`} />
         <StatCard kind="projected" label="Balance in 90 days" icon={<TrendingUp className="h-4 w-4 text-blue-600" />} value={inr(kpis.projected_balance_90)}

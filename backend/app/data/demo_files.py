@@ -28,7 +28,12 @@ DEMO_FILES = [
              "6 months of synthetic salary-account entries in a typical Indian bank statement layout."),
     DemoFile("transactions", "Transaction list (demo)", "transactions", "finora-demo-transactions.csv",
              "Categorised transactions as exported by a budgeting app. Needs an opening balance."),
+    DemoFile("paypal_freelancer", "PayPal Activity report: freelancer with US clients (demo)", "paypal_activity",
+             "finora-demo-paypal-freelancer.csv",
+             "6 months of synthetic cross-border PayPal activity: USD client payments with PayPal fees, PayPal's "
+             "USD→INR conversions and INR spending. Fees and rates are illustrative."),
 ]
+PERSONA = {"paypal_freelancer": "freelancer"}
 
 
 def _ref(t: NormalizedTransaction, n: int = 12) -> str:
@@ -53,13 +58,41 @@ def _paypal_type(t: NormalizedTransaction) -> str:
     return "Express Checkout Payment"
 
 
+def _paypal_multicurrency(txns: list[NormalizedTransaction], opening: Decimal) -> str:
+    """PayPal's cross-border layout: the USD receipt (gross, fee, net), then PayPal's two conversion legs
+    (USD out, INR in) linked to it by Reference Txn ID. Balances run per currency."""
+    header = ["Date", "Time", "TimeZone", "Name", "Type", "Status", "Currency", "Gross", "Fee", "Net", "Balance",
+              "Transaction ID", "Reference Txn ID"]
+    rows, inr = [], opening
+    for i, t in enumerate(txns):
+        d = t.posted_on.strftime("%d/%m/%Y")
+        hh, mm = 9 + i % 12, (i * 7) % 60
+        tid = _ref(t, 17)
+        if t.fx:
+            f = t.fx
+            rows.append([d, f"{hh:02d}:{mm:02d}:00", "Asia/Kolkata", t.merchant, "Payment Received", "Completed", f.currency,
+                         f"{f.gross:.2f}", f"{f.fee:.2f}", f"{f.net:.2f}", f"{f.net:.2f}", tid, ""])
+            rows.append([d, f"{hh:02d}:{mm:02d}:30", "Asia/Kolkata", "", "General Currency Conversion", "Completed", f.currency,
+                         f"{-f.net:.2f}", "0.00", f"{-f.net:.2f}", "0.00", _ref(t, 16) + "A", tid])
+            inr += t.amount
+            rows.append([d, f"{hh:02d}:{mm:02d}:30", "Asia/Kolkata", "", "General Currency Conversion", "Completed", "INR",
+                         f"{t.amount:.2f}", "0.00", f"{t.amount:.2f}", f"{inr:.2f}", _ref(t, 16) + "B", tid])
+            continue
+        inr += t.amount
+        rows.append([d, f"{hh:02d}:{mm:02d}:00", "Asia/Kolkata", t.merchant, _paypal_type(t), "Completed", "INR",
+                     f"{t.amount:.2f}", "0.00", f"{t.amount:.2f}", f"{inr:.2f}", tid, ""])
+    return _write(header, rows)
+
+
 def render(file_id: str, today: date, seed: int = 42) -> tuple[DemoFile, str, Decimal]:
     meta = next((f for f in DEMO_FILES if f.id == file_id), None)
     if meta is None:
         raise KeyError(file_id)
-    src = SyntheticSource(today, seed)
+    src = SyntheticSource(today, seed, PERSONA.get(file_id, "salaried"))
     txns = src.fetch()
     opening = src.opening_balance(txns)
+    if file_id == "paypal_freelancer":
+        return meta, _paypal_multicurrency(txns, opening), opening
 
     if meta.format == "transactions":
         rows = [[t.posted_on.isoformat(), t.description, f"{t.amount:.2f}", t.category, t.merchant] for t in txns]

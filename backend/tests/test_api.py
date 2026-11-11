@@ -1,6 +1,8 @@
-from datetime import date, timedelta
+﻿from datetime import timedelta
 
 import pytest
+
+from tests.conftest import TODAY
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -23,7 +25,7 @@ def test_status_and_demo_files(client):
     st = client.get("/api/status").json()
     assert st["has_data"] and st["data_source"] == "paypal_activity"
     files = client.get("/api/demo-files").json()
-    assert {f["id"] for f in files} == {"paypal_activity", "bank_statement", "transactions"}
+    assert {f["id"] for f in files} == {"paypal_activity", "bank_statement", "transactions", "paypal_freelancer"}
 
 
 def test_dashboard(client):
@@ -57,7 +59,7 @@ def test_purchase_simulation(client):
     assert body["recommendation"]["verdict"] == "wait"
     assert [i["day"] for i in body["impacts"]] == [30, 60, 90]
     assert client.post("/api/simulations/purchase", json={"amount": -5}).status_code == 422
-    far = (date.today() + timedelta(days=400)).isoformat()
+    far = (TODAY + timedelta(days=400)).isoformat()
     assert client.post("/api/simulations/purchase", json={"amount": 100, "purchase_date": far}).status_code == 422
 
 
@@ -70,7 +72,7 @@ def test_profile_name_and_buffer(client):
 
 
 def test_obligation_crud(client):
-    due = (date.today() + timedelta(days=10)).isoformat()
+    due = (TODAY + timedelta(days=10)).isoformat()
     created = client.post("/api/obligations", json={"title": "Test fee", "amount": 1000, "due_on": due}).json()
     assert client.delete(f"/api/obligations/{created['id']}").status_code == 204
 

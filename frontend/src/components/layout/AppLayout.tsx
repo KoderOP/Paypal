@@ -1,5 +1,5 @@
 import {
-  ArrowLeftRight, Bot, FlaskConical, LayoutDashboard, LogIn, LogOut, Menu, Repeat, Settings, ShieldAlert, Sparkles,
+  ArrowLeftRight, Bot, Columns3, FlaskConical, Globe2, LayoutDashboard, LogIn, LogOut, Menu, Repeat, Settings, ShieldAlert, Sparkles,
   UploadCloud, UserRound, Wallet, X,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -10,8 +10,10 @@ import { useDataStatus } from '../../context/DataStatus'
 export const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/paypal', label: 'PayPal', icon: Wallet, paypal: true },
+  { to: '/crossborder', label: 'Cross-border income', icon: Globe2 },
   { to: '/twin', label: 'My Financial Twin', icon: UserRound },
   { to: '/simulator', label: 'What-if Simulator', icon: FlaskConical, highlight: true },
+  { to: '/compare', label: 'Compare scenarios', icon: Columns3 },
   { to: '/assistant', label: 'AI Financial Assistant', icon: Bot, highlight: true },
   { to: '/subscriptions', label: 'Subscriptions', icon: Repeat },
   { to: '/stress', label: 'Stress Testing', icon: ShieldAlert, soon: true },

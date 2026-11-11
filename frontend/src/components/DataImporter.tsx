@@ -40,7 +40,7 @@ export function DataImporter({ format, hasExistingData, onImported, beforeImport
   const [error, setError] = useState<ApiError | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const demos = useApi(api.demoFiles)
-  const demoFile = demos.data?.find((d) => d.format === format)
+  const demoFiles = demos.data?.filter((d) => d.format === format) ?? []
   const info = FORMAT_INFO[format]
 
   function pick(f: File | null, fromDemo: DemoFile | null = null) {
@@ -54,8 +54,7 @@ export function DataImporter({ format, hasExistingData, onImported, beforeImport
     if (fromDemo?.suggested_opening_balance != null) setOpening(String(fromDemo.suggested_opening_balance))
   }
 
-  async function useDemo() {
-    if (!demoFile) return
+  async function chooseDemo(demoFile: DemoFile) {
     try { pick(await api.demoFile(demoFile), demoFile) } catch (e) { setError(e instanceof ApiError ? e : new ApiError(0, String(e))) }
   }
 
@@ -113,12 +112,12 @@ export function DataImporter({ format, hasExistingData, onImported, beforeImport
         )}
       </div>
 
-      {demoFile && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3.5">
+      {demoFiles.map((demoFile, i) => (
+        <div key={demoFile.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3.5">
           <div className="flex items-start gap-2.5">
             <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
             <div>
-              <p className="text-[13px] font-medium text-navy-900">No file handy? Use the demo file</p>
+              <p className="text-[13px] font-medium text-navy-900">{i === 0 ? 'No file handy? Use the demo file' : demoFile.title}</p>
               <p className="text-xs text-navy-500">{demoFile.description} <b>Synthetic data — not real transactions.</b></p>
             </div>
           </div>
@@ -126,12 +125,12 @@ export function DataImporter({ format, hasExistingData, onImported, beforeImport
             <a href={api.demoFileUrl(demoFile.id)} download={demoFile.filename} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-navy-700 hover:bg-slate-50">
               <Download className="h-3.5 w-3.5" /> Download
             </a>
-            <button onClick={useDemo} className="inline-flex items-center gap-1 rounded-lg bg-navy-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-navy-800">
-              {demo ? <CheckCircle2 className="h-3.5 w-3.5 text-brand-500" /> : null} {demo ? 'Selected' : 'Use demo file'}
+            <button onClick={() => void chooseDemo(demoFile)} className="inline-flex items-center gap-1 rounded-lg bg-navy-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-navy-800">
+              {demo?.id === demoFile.id ? <CheckCircle2 className="h-3.5 w-3.5 text-brand-500" /> : null} {demo?.id === demoFile.id ? 'Selected' : 'Use demo file'}
             </button>
           </div>
         </div>
-      )}
+      ))}
 
       {format === 'transactions' && (
         <label className="block text-xs font-medium text-navy-700">

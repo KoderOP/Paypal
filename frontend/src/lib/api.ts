@@ -1,5 +1,6 @@
 import type {
-  AddedSubscription, Affordability, AssistantStatus, SubscriptionInput, AuthState, ChatResponse, ChatTurn, CheckoutOrder, Dashboard, DemoFile, FileFormat,
+  AddedSubscription, Affordability, AlertsView, AssistantStatus, ChatContext, CrossBorder, NamedScenario, SavedScenario,
+  ScenarioComparison, SubscriptionInput, AuthState, ChatResponse, ChatTurn, CheckoutOrder, Dashboard, DemoFile, FileFormat,
   ImportResult, LinkedSubscription, Obligation, ObligationCreate, PaymentComparison, PayPalOverview, PurchaseRequest,
   PurchaseSimulation, ScenarioChange, ScenarioInfo, ScenarioResult, SettingsData, StatusData, SubscriptionsOverview,
   TransactionPage, TwinData,
@@ -125,5 +126,21 @@ export const api = {
 
   // Assistant
   assistantStatus: () => request<AssistantStatus>('/assistant/status'),
-  chat: (messages: ChatTurn[]) => request<ChatResponse>('/assistant/chat', json('POST', { messages })),
+  chat: (messages: ChatTurn[], context?: ChatContext | null) =>
+    request<ChatResponse>('/assistant/chat', json('POST', { messages, context: context ?? undefined })),
+
+  // Compare scenarios
+  compare: (scenarios: NamedScenario[]) => request<ScenarioComparison>('/simulations/compare', json('POST', { scenarios })),
+  savedScenarios: () => request<SavedScenario[]>('/simulations/saved'),
+  saveScenario: (s: NamedScenario) => request<SavedScenario>('/simulations/saved', json('POST', s)),
+  deleteScenario: (id: number) => request<void>(`/simulations/saved/${id}`, { method: 'DELETE' }),
+
+  // Alerts
+  alerts: () => request<AlertsView>('/alerts'),
+  dismissAlert: (id: string) => request<AlertsView>('/alerts/dismiss', json('POST', { id })),
+  restoreAlerts: () => request<AlertsView>('/alerts/restore', json('POST', {})),
+
+  // Cross-border
+  crossBorder: () => request<CrossBorder>('/crossborder'),
+  setReferenceRate: (currency: string, rate: number | null) => request<CrossBorder>('/crossborder/reference-rate', json('PUT', { currency, rate })),
 }

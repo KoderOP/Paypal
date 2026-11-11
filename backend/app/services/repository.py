@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.money import ZERO, money
-from app.data.models import AddedSubscription, Account, LinkedSubscription, Obligation, Transaction, User
+from app.data.models import AddedSubscription, Account, FxDetail, LinkedSubscription, Obligation, Transaction, User
 from app.engine.twin import FinancialProfile, RecurringItem, build_profile, with_added, without_cancelled
-from app.engine.types import Assumptions, ObligationIn, Txn
+from app.engine.types import Assumptions, FxTxn, ObligationIn, Txn
 
 
 def today() -> date:
@@ -28,10 +28,13 @@ NO_DATA = {"code": "no_data", "message": "No financial data yet. Connect PayPal 
 
 
 def load_transactions(db: Session, user: User) -> list[Txn]:
-    rows = db.scalars(
-        select(Transaction).join(Account).where(Account.user_id == user.id).order_by(Transaction.posted_on, Transaction.id)
+    rows = db.execute(
+        select(Transaction, FxDetail).join(Account).outerjoin(FxDetail, FxDetail.transaction_id == Transaction.id)
+        .where(Account.user_id == user.id).order_by(Transaction.posted_on, Transaction.id)
     ).all()
-    return [Txn(posted_on=r.posted_on, description=r.description, merchant=r.merchant, category=r.category, amount=r.amount) for r in rows]
+    return [Txn(posted_on=r.posted_on, description=r.description, merchant=r.merchant, category=r.category, amount=r.amount,
+                fx=FxTxn(currency=f.currency, gross=f.gross, fee=f.fee, net=f.net, rate=f.rate) if f else None)
+            for r, f in rows]
 
 
 def opening_total(db: Session, user: User) -> Decimal:

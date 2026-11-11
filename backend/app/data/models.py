@@ -67,6 +67,37 @@ class Transaction(Base):
     account: Mapped[Account] = relationship(back_populates="transactions")
 
 
+class FxDetail(Base):
+    """Original-currency details of a transaction received in a foreign currency and converted.
+
+    Kept in its own table (one row per converted transaction) so existing databases need no
+    migration. `Transaction.amount` is always the home-currency amount actually credited.
+    """
+
+    __tablename__ = "fx_details"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    transaction_id: Mapped[int] = mapped_column(ForeignKey("transactions.id", ondelete="CASCADE"), unique=True)
+    currency: Mapped[str] = mapped_column(String(3))
+    gross: Mapped[Decimal] = mapped_column(MONEY)
+    fee: Mapped[Decimal] = mapped_column(MONEY)
+    net: Mapped[Decimal] = mapped_column(MONEY)
+    rate: Mapped[Decimal] = mapped_column(Numeric(14, 6))
+    rate_source: Mapped[str] = mapped_column(String(30))
+
+
+class SavedScenario(Base):
+    """A named what-if (list of scenario changes) saved for side-by-side comparison."""
+
+    __tablename__ = "saved_scenarios"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    changes: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class Obligation(Base):
     """A known future one-off outflow (insurance renewal, fees, planned payments)."""
 

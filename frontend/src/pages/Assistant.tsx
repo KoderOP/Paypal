@@ -1,6 +1,6 @@
-import { Bot, Calculator, Loader2, SendHorizontal, ShieldCheck, ShieldAlert, Sparkles, User } from 'lucide-react'
+import { Bookmark, Bot, Calculator, CornerDownRight, Loader2, SendHorizontal, ShieldCheck, ShieldAlert, Sparkles, User } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ChartLegendItem } from '../components/charts/CashflowChart'
 import { TooltipRow, TooltipShell, tooltipDate } from '../components/charts/ChartTooltip'
@@ -13,13 +13,16 @@ import { useDataStatus } from '../context/DataStatus'
 import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
 import { fmtShort, inr, inrCompact, signedInr } from '../lib/format'
-import type { ChatResponse, ChatTurn, ScenarioCard, SnapshotCard, ToolCall } from '../lib/types'
+import { describeChange } from '../lib/scenarios'
+import type { ChatContext, ChatResponse, ChatTurn, CrossBorder, ScenarioCard, ScenarioChange, SnapshotCard, ToolCall } from '../lib/types'
 
 const SUGGESTIONS = [
   'What happens if I buy a laptop worth ₹75,000 this month?',
   'What’s the most I can spend this month?',
   'What if I cancel three subscriptions?',
   'What if I add a ₹499/month gym membership?',
+  'What if USD/INR drops 3%?',
+  'How much am I losing to PayPal fees?',
   'What if my income is delayed by 15 days?',
   'What if I increase my monthly savings by 10%?',
   'When can I safely buy a ₹1.2 lakh vacation?',
@@ -33,6 +36,8 @@ export default function Assistant() {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
+  // What the last answer computed; sent with the next question so follow-ups build on it.
+  const [context, setContext] = useState<ChatContext | null>(null)
   const [params, setParams] = useSearchParams()
   const end = useRef<HTMLDivElement>(null)
   const sentQ = useRef(false)
@@ -46,8 +51,9 @@ export default function Assistant() {
     setText('')
     setBusy(true)
     try {
-      const res = await api.chat(history)
+      const res = await api.chat(history, context)
       setMsgs((m) => [...m, { role: 'assistant', content: res.reply, res }])
+      if (res.context) setContext(res.context)
     } catch (e) {
       setMsgs((m) => [...m, { role: 'assistant', content: '', error: e instanceof ApiError ? e.message : String(e) }])
     } finally { setBusy(false) }
@@ -94,8 +100,14 @@ export default function Assistant() {
         <div ref={end} />
       </div>
 
+      {context && (
+        <div className="sticky bottom-[76px] mt-6 flex items-center justify-between gap-2 rounded-xl bg-slate-100/90 px-3 py-1.5 text-xs text-navy-600 backdrop-blur">
+          <span className="truncate"><CornerDownRight className="mr-1 inline h-3.5 w-3.5" />Follow-ups build on: <b className="text-navy-800">{contextLabel(context)}</b>. Try “and what if my salary is also late?”</span>
+          <button onClick={() => setContext(null)} className="shrink-0 rounded-md px-2 py-0.5 font-semibold text-navy-700 hover:bg-white">New topic</button>
+        </div>
+      )}
       <form onSubmit={(e) => { e.preventDefault(); void send(text) }}
-        className="sticky bottom-4 mt-6 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg shadow-navy-900/5">
+        className={`sticky bottom-4 ${context ? 'mt-2' : 'mt-6'} flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg shadow-navy-900/5`}>
         <label htmlFor="ask" className="sr-only">Ask FINORA</label>
         <input id="ask" value={text} maxLength={2000} onChange={(e) => setText(e.target.value)} placeholder="e.g. What if I cancel Netflix and my salary is 2 weeks late?"
           className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none" />
@@ -106,6 +118,14 @@ export default function Assistant() {
       </form>
     </>
   )
+}
+
+function contextLabel(c: ChatContext): string {
+  const a = c.arguments as { changes?: ScenarioChange[]; amount?: number; label?: string }
+  if (c.tool === 'simulate_scenario' && a.changes?.length) return a.changes.map(describeChange).join(' + ')
+  if (c.tool === 'compare_payment_options') return `${a.label ?? 'Purchase'} ${inr(Number(a.amount ?? 0))}`
+  if (c.tool === 'find_affordability') return a.amount ? `affordability of ${inr(a.amount)}` : 'how much you can spend'
+  return c.tool.replace(/_/g, ' ')
 }
 
 function AssistantMessage({ m, onChanged }: { m: Msg; onChanged: () => void }) {
@@ -121,6 +141,9 @@ function AssistantMessage({ m, onChanged }: { m: Msg; onChanged: () => void }) {
             <div className="space-y-1.5 text-sm leading-relaxed text-navy-800">
               {lines.map((l, i) => i === 0 ? <p key={i} className="font-medium text-navy-900">{l}</p> : <p key={i}>{l}</p>)}
             </div>
+            {m.res?.built_on && (
+              <p className="mt-2 flex items-center gap-1 text-[12px] text-navy-500"><CornerDownRight className="h-3.5 w-3.5" /> Built on your previous question: kept {m.res.built_on}.</p>
+            )}
             {m.res && (
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5">
                 {m.res.guardrail === 'replaced'
@@ -145,16 +168,46 @@ function ToolCardView({ call, onChanged }: { call: ToolCall; onChanged: () => vo
   switch (c.kind) {
     case 'payment_options': return <PaymentOptions cmp={c} compact onChanged={onChanged} />
     case 'affordability': return <GoalSolver data={c} amount={c.earliest?.amount} />
-    case 'scenario': return <ScenarioView card={c} />
+    case 'scenario': return <ScenarioView card={c} changes={(call.arguments.changes as ScenarioChange[] | undefined) ?? []} />
     case 'snapshot': return <SnapshotView card={c} />
+    case 'cross_border': return <CrossBorderView card={c} />
   }
 }
 
-function ScenarioView({ card }: { card: ScenarioCard }) {
-  const rows = card.dates.map((on, i) => ({ on, baseline: card.baseline_series[i], scenario: card.scenario_series[i] }))
+function CrossBorderView({ card }: { card: CrossBorder }) {
+  const c = card.currencies[0]
+  if (!card.has_foreign || !c) return null
   return (
     <Card>
-      <CardHeader title={card.title} action={<ProjectedTag />} subtitle={card.applied.map((a) => a.description).join(' · ')} />
+      <CardHeader title="Income from abroad" action={<Link to="/crossborder" className="text-[13px] font-semibold text-navy-900 hover:underline">Open →</Link>} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[['Received', `${c.currency} ${c.gross.toLocaleString('en-IN')}`], ['PayPal fees', `${c.currency} ${c.fees.toLocaleString('en-IN')}`],
+          ['Avg rate', `₹${c.avg_rate.toFixed(2)}`], ['Landed', inr(c.received_home)]].map(([k, v]) => (
+          <div key={k}><p className="text-[11px] text-navy-500">{k}</p><p className="tabular text-sm font-semibold text-navy-900">{v}</p></div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function ScenarioView({ card, changes }: { card: ScenarioCard; changes: ScenarioChange[] }) {
+  const rows = card.dates.map((on, i) => ({ on, baseline: card.baseline_series[i], scenario: card.scenario_series[i] }))
+  const [saved, setSaved] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  async function save() {
+    setSaved('saving')
+    try { await api.saveScenario({ name: card.title.slice(0, 80), changes }); setSaved('saved') } catch { setSaved('error') }
+  }
+  return (
+    <Card>
+      <CardHeader title={card.title} subtitle={card.applied.map((a) => a.description).join(' · ')} action={
+        <div className="flex items-center gap-2">
+          <ProjectedTag />
+          {changes.length > 0 && (saved === 'saved'
+            ? <Link to="/compare" className="text-[12px] font-semibold text-brand-700 hover:underline">Saved · Compare →</Link>
+            : <button onClick={() => void save()} disabled={saved === 'saving'} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-medium text-navy-700 hover:bg-slate-50 disabled:opacity-50">
+                <Bookmark className="h-3.5 w-3.5" /> {saved === 'error' ? 'Retry save' : 'Save to compare'}
+              </button>)}
+        </div>} />
       <div className="mb-3 flex flex-wrap gap-4 text-xs text-navy-500">
         <ChartLegendItem swatch="var(--series-1)" label="Today’s plan" />
         <ChartLegendItem swatch="var(--series-2)" label="With these changes" />

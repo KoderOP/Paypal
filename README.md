@@ -29,6 +29,18 @@ transaction files are also supported.
 - **AI assistant:** the language model only picks which engine tool to run. A guardrail rejects any rupee figure the
   engine didn't produce. Without an API key, a deterministic parser answers the same questions.
 - **Sign in with PayPal** (OpenID Connect) is optional and open to any PayPal account. No feature requires it.
+- **Compare scenarios** puts up to four what-ifs on one chart and table (e.g. *cancel subscriptions* vs *laptop on
+  payday* vs *both*). The best one is the highest ending balance that never dips below the buffer. Scenarios can be
+  saved, including straight from the assistant.
+- **Assistant follow-ups:** *"And what if my salary is also late?"* keeps the previous scenario and adds to it.
+  *"What about 20 days?"* tweaks it.
+- **Cross-border freelancer mode:** multi-currency PayPal reports are converted with PayPal's own conversion rows,
+  and each payment keeps its original currency, fee and applied rate. The Cross-border page shows income by client,
+  PayPal fees, the average rate PayPal applied, conversion cost against a rate you enter, *"what if USD/INR drops
+  3%?"* and *"what if this client pays late?"*. Withdrawals to a bank are treated as transfers, not spending.
+- **Proactive alerts** on the dashboard, for example: below-buffer or overdraft ahead, a big bill due just before
+  income, a Pay Later instalment due tomorrow, income that's late, or a subscription price increase. Each can be
+  dismissed for that occurrence.
 
 ---
 
@@ -67,7 +79,7 @@ docker compose up --build      # db (Postgres 16) + backend + frontend
 ### Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q    # 82 tests: engine, planning, parsers, PayPal APIs (mocked), assistant, API
+cd backend && .venv/bin/python -m pytest -q    # 105 tests: engine, planning, parsers, PayPal APIs (mocked), assistant, API (clock pinned to 3 Nov 2026)
 cd frontend && npx tsc -b && npm run build      # type-check + production build
 ```
 
@@ -192,7 +204,11 @@ All endpoints are prefixed with `/api`. Interactive docs are at `http://localhos
 | POST | `/simulations/payment-options` | `{amount, label, plans?}` → pay now / wait / Pay Later options, each with a balance series, cost, low point and safe flag, plus a recommendation |
 | GET | `/simulations/pay-later-plans` | Default (illustrative) Pay Later terms |
 | POST | `/simulations/affordability` | `{amount?, search_days}` → most you can spend today / this month, affordability curve, earliest safe date |
-| POST | `/simulations/scenario` | `{changes: [...]}` → composable what-if (`purchase`, `add_subscription`, `cancel_subscriptions`, `income_delay`, `increase_savings`, `expense_increase`, `unexpected_payment`) |
+| POST | `/simulations/scenario` | `{changes: [...]}` → composable what-if (`purchase`, `add_subscription`, `cancel_subscriptions`, `income_delay` (optionally one `merchant`), `increase_savings`, `expense_increase`, `unexpected_payment`, `fx_change`) |
+| POST | `/simulations/compare` | `{scenarios: [{name, changes}]}` (1–4) → series, end and low balances, buffer check, best pick |
+| GET / POST / DELETE | `/simulations/saved` · `/simulations/saved/{id}` | Saved scenarios for comparison |
+| GET | `/alerts` · POST `/alerts/dismiss` `{id}` · POST `/alerts/restore` | Proactive alerts |
+| GET | `/crossborder` · PUT `/crossborder/reference-rate` `{currency, rate}` | Foreign income, fees, applied rates, FX sensitivity, late-client risk |
 | POST | `/checkout/orders` | `{amount, label, option_id, acknowledged: true}` → PayPal order + approval link (simulation re-run server-side and snapshotted) |
 | GET | `/checkout/return` · `/checkout/cancel` | PayPal redirect targets → order `approved` / `cancelled` |
 | POST | `/checkout/orders/{id}/capture` | `{confirm: true}` → capture. Records a PayPal transaction (pay in full) or one obligation per instalment (Pay Later) |
@@ -257,6 +273,11 @@ FINORA recommends **waiting 12 days for the salary**.
 - **Subscriptions API limits.** PayPal lets only the *merchant's* REST app cancel a subscription through
   the API. For other merchants, FINORA links you to PayPal → Automatic payments and lets you mark the item
   cancelled.
+- **Cross-border:** only foreign *income* is converted (payments received). FINORA never fetches market rates, so
+  conversion cost appears only if you enter a reference rate. The freelancer demo's fees and rates are illustrative,
+  not PayPal's pricing. Uploading a PayPal report *and* the bank statement it withdraws to works, because
+  withdrawals are treated as transfers. A bank-side "PayPal" credit is only recognised as a transfer if its
+  narration matches the transfer keywords.
 - **The assistant's rule-based mode** understands the core what-if questions, not free-form chat. Add
   `OPENAI_API_KEY` for that. The Stress Testing page is still a placeholder.
 - Forecasting only detects monthly recurrence (weekly or annual items count as variable spend). It

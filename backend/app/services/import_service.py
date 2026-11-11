@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.data.models import Account, Obligation, Transaction, User
+from app.data.models import Account, FxDetail, Obligation, Transaction, User
 from app.data.sources.base import NormalizedTransaction
 
 ACCOUNT_NAMES = {"paypal": "PayPal account", "bank_statement": "Bank account", "csv": "Imported transactions"}
@@ -16,6 +16,8 @@ def has_data(db: Session, user: User) -> bool:
 
 def clear_user_data(db: Session, user: User) -> None:
     ids = select(Account.id).where(Account.user_id == user.id)
+    txn_ids = select(Transaction.id).where(Transaction.account_id.in_(ids))
+    db.execute(delete(FxDetail).where(FxDetail.transaction_id.in_(txn_ids)))  # SQLite doesn't cascade by default
     db.execute(delete(Transaction).where(Transaction.account_id.in_(ids)))
     db.execute(delete(Account).where(Account.user_id == user.id))
     db.execute(delete(Obligation).where(Obligation.user_id == user.id))
@@ -39,11 +41,15 @@ def store_transactions(db: Session, user: User, source_name: str, txns: list[Nor
 
     existing = set(db.scalars(select(Transaction.external_id).where(Transaction.account_id == account.id)).all())
     new = [t for t in txns if t.external_id not in existing]
-    db.add_all(
-        Transaction(account_id=account.id, posted_on=t.posted_on, description=t.description, merchant=t.merchant,
-                    category=t.category, amount=t.amount, source=source_name, external_id=t.external_id)
-        for t in new
-    )
+    rows = [Transaction(account_id=account.id, posted_on=t.posted_on, description=t.description, merchant=t.merchant,
+                        category=t.category, amount=t.amount, source=source_name, external_id=t.external_id)
+            for t in new]
+    db.add_all(rows)
+    if any(t.fx for t in new):
+        db.flush()  # assign ids so foreign-currency details can reference their transaction
+        db.add_all(FxDetail(transaction_id=row.id, currency=t.fx.currency, gross=t.fx.gross, fee=t.fx.fee,
+                            net=t.fx.net, rate=t.fx.rate, rate_source=t.fx.rate_source)
+                   for row, t in zip(rows, new) if t.fx)
     prefs = dict(user.preferences or {})
     prefs["data_source"] = data_label if not had_data or prefs.get("data_source") in (None, data_label) else "mixed"
     user.preferences = prefs

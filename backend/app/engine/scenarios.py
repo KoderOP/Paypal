@@ -35,6 +35,7 @@ class IncomeDelay(BaseModel):
     type: Literal["income_delay"] = "income_delay"
     days: int = Field(ge=1, le=90)
     all_future: bool = False  # False: only the next income payment is late
+    merchant: str | None = Field(None, max_length=120, description="Only this payer (e.g. one client) is late")
 
 
 class IncreaseSavings(BaseModel):
@@ -56,6 +57,17 @@ class AddSubscription(BaseModel):
     start: date | None = None
 
 
+class FxChange(BaseModel):
+    """What if the exchange rate moves? Scales future recurring income received in `currency`.
+
+    +3 means 1 USD buys 3% more INR (rupee weakens); -3 means USD/INR drops 3% (rupee strengthens).
+    """
+
+    type: Literal["fx_change"] = "fx_change"
+    percent: Money = Field(ge=Decimal("-50"), le=Decimal("50"))
+    currency: str = Field("USD", pattern=r"^[A-Z]{3}$")
+
+
 class UnexpectedPayment(BaseModel):
     type: Literal["unexpected_payment"] = "unexpected_payment"
     amount: Money = Field(gt=0, le=Decimal("100000000"))
@@ -65,7 +77,7 @@ class UnexpectedPayment(BaseModel):
 
 Change = Annotated[
     Union[PurchaseChange, CancelSubscriptions, IncomeDelay, IncreaseSavings, ExpenseIncrease, UnexpectedPayment,
-          AddSubscription],
+          AddSubscription, FxChange],
     Field(discriminator="type"),
 ]
 
@@ -145,15 +157,25 @@ def apply_changes(profile: FinancialProfile, a: Assumptions, changes: list, hori
                     description=f"Cancel {', '.join(s.merchant for s in picked)} (saves {inr(saved)}/month)"))
 
         elif isinstance(c, IncomeDelay):
-            income = sorted((e for e in events if e.kind == "income" and e.ref), key=lambda e: e.on)
+            payers = None
+            if c.merchant:
+                m = c.merchant.strip().lower()
+                payers = {r.key for r in profile.recurring_income if m in r.merchant.lower() or m == r.key}
+            income = sorted((e for e in events if e.kind == "income" and e.ref and (payers is None or e.ref in payers)),
+                            key=lambda e: e.on)
             targets = income if c.all_future else income[:1]
             ids = {id(e) for e in targets}
             moved = [e.model_copy(update={"on": e.on + timedelta(days=c.days)}) for e in targets]
             events = [e for e in events if id(e) not in ids] + [e for e in moved if e.on <= end]
             if targets:
-                what = "every income payment" if c.all_future else f"income due {fmt_date(targets[0].on)}"
+                payer = next((r.merchant for r in profile.recurring_income if r.key == targets[0].ref), "income")
+                who = f"{payer}'s payment" if c.merchant else "income"
+                what = (f"every {payer} payment" if c.merchant else "every income payment") if c.all_future \
+                    else f"{who} due {fmt_date(targets[0].on)}"
                 applied.append(AppliedChange(type=c.type, monthly_effect=ZERO, one_off_effect=ZERO,
                                              description=f"Delay {what} by {c.days} days"))
+            elif c.merchant:
+                notes.append(f"No regular income from '{c.merchant}' was detected, so there is nothing to delay.")
             else:
                 notes.append("No regular income was detected, so there is nothing to delay.")
 
@@ -189,6 +211,21 @@ def apply_changes(profile: FinancialProfile, a: Assumptions, changes: list, hori
             applied.append(AppliedChange(type=c.type, monthly_effect=-c.amount, one_off_effect=ZERO,
                                          description=f"Subscribe to {c.label} at {inr(c.amount)}/month, starting {when}"))
 
+        elif isinstance(c, FxChange):
+            foreign = [r for r in profile.recurring_income if r.currency == c.currency]
+            if not foreign:
+                notes.append(f"No regular income in {c.currency} was detected, so an exchange-rate move changes nothing.")
+                continue
+            keys, pct = {r.key for r in foreign}, c.percent / Decimal(100)
+            events += [e.model_copy(update={"amount": money(e.amount * pct), "label": f"{c.currency}/INR move"})
+                       for e in events if e.kind == "income" and e.ref in keys]
+            monthly = money(total(r.amount for r in foreign) * pct)
+            pair = f"{c.currency}/INR"
+            applied.append(AppliedChange(
+                type=c.type, monthly_effect=monthly, one_off_effect=ZERO,
+                description=f"{pair} {'rises' if c.percent > 0 else 'drops'} {abs(c.percent)}%: your {c.currency} income "
+                            f"is worth {'+' if monthly >= 0 else '-'}{inr(abs(monthly))}/month"))
+
         elif isinstance(c, ExpenseIncrease):
             pct = c.percent / Decimal(100)
             events += [e.model_copy(update={"amount": money(e.amount * pct), "label": "Spending change"})
@@ -199,6 +236,76 @@ def apply_changes(profile: FinancialProfile, a: Assumptions, changes: list, hori
                                          description=f"{word} day-to-day spending by {abs(c.percent)}% "
                                                      f"({'+' if monthly > 0 else '-'}{inr(abs(monthly))}/month)"))
     return events, applied, notes
+
+
+class ComparedScenario(BaseModel):
+    id: str
+    name: str
+    applied: list[AppliedChange]
+    notes: list[str]
+    series: list[Money]
+    end_balance: Money
+    end_delta: Money  # vs baseline, at the end of the horizon
+    min_balance: Money
+    min_balance_date: date
+    first_below_buffer: date | None
+    days_below_buffer: int
+    safe: bool
+    monthly_effect: Money
+    impacts: list[Impact]
+    best: bool = False
+
+
+class ScenarioComparison(BaseModel):
+    as_of: date
+    assumptions: Assumptions
+    dates: list[date]
+    baseline_series: list[Money]
+    baseline_end: Money
+    baseline_min: Money
+    scenarios: list[ComparedScenario]
+    best_id: str | None
+    summary: list[str]
+
+
+def compare_scenarios(profile: FinancialProfile, a: Assumptions, named: list[tuple[str, list]]) -> ScenarioComparison:
+    """Project up to four scenarios on the same baseline. Best = highest end balance among those that never dip
+    below the safety buffer; if none are safe, nothing is marked best and the least risky one is named."""
+    if not 1 <= len(named) <= 4:
+        raise ValueError("Compare between 1 and 4 scenarios")
+    results = [(f"s{i + 1}", name, simulate_scenario(profile, a, changes, name)) for i, (name, changes) in enumerate(named)]
+    base = results[0][2].baseline
+    out = [ComparedScenario(
+        id=sid, name=name, applied=r.applied, notes=r.notes, series=[p.balance for p in r.simulated.points],
+        end_balance=r.simulated.end_balance, end_delta=money(r.simulated.end_balance - base.end_balance),
+        min_balance=r.simulated.min_balance, min_balance_date=r.simulated.min_balance_date,
+        first_below_buffer=r.simulated.first_below_buffer, days_below_buffer=r.simulated.days_below_buffer,
+        safe=r.simulated.min_balance >= a.safety_buffer, monthly_effect=r.monthly_effect, impacts=r.impacts,
+    ) for sid, name, r in results]
+
+    safe = [s for s in out if s.safe]
+    best = max(safe, key=lambda s: (s.end_balance, s.min_balance)) if safe else None
+    lines: list[str] = []
+    if best:
+        best.best = True
+        vs = ("level with today's plan" if best.end_delta == 0 else
+              f"{'+' if best.end_delta > 0 else '-'}{inr(abs(best.end_delta))} vs today's plan")
+        lines.append(f"Best: {best.name}. It ends at {inr(best.end_balance)} in {a.horizon_days} days ({vs}) and never "
+                     f"dips below your {inr(a.safety_buffer)} buffer.")
+    else:
+        least = max(out, key=lambda s: s.min_balance)
+        lines.append(f"None of these stay above your {inr(a.safety_buffer)} buffer. The least risky is {least.name}, "
+                     f"bottoming at {inr(least.min_balance)} on {fmt_date(least.min_balance_date)}.")
+    for s in out:
+        if s is best:
+            continue
+        lines.append(f"{s.name}: ends at {inr(s.end_balance)}, " + (
+            f"lowest {inr(s.min_balance)} on {fmt_date(s.min_balance_date)}." if s.safe else
+            f"dips below your buffer on {fmt_date(s.first_below_buffer)} for {s.days_below_buffer} day(s)."))
+    return ScenarioComparison(as_of=profile.as_of, assumptions=a, dates=[p.on for p in base.points],
+                              baseline_series=[p.balance for p in base.points], baseline_end=base.end_balance,
+                              baseline_min=base.min_balance, scenarios=out, best_id=best.id if best else None,
+                              summary=lines)
 
 
 def simulate_scenario(profile: FinancialProfile, a: Assumptions, changes: list, title: str | None = None) -> ScenarioResult:

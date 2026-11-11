@@ -51,6 +51,9 @@ export interface RecurringItem {
   next_date: ISODate
   /** detected = learned from transactions · manual = added by you · paypal = PayPal Subscriptions API */
   source: 'detected' | 'manual' | 'paypal'
+  /** Set when this income arrives in a foreign currency (e.g. a US client paying in USD). */
+  currency: string | null
+  foreign_amount: number | null
 }
 
 export interface CategorySpend {
@@ -340,10 +343,49 @@ export interface SnapshotCard {
   kind: 'snapshot'; current_balance: number; monthly_income: number; avg_monthly_spending: number
   subscriptions_monthly: number; next_income_date: ISODate | null; projected_balance_90: number; safety_buffer: number
 }
-export type ToolCard = ({ kind: 'payment_options' } & PaymentComparison) | ({ kind: 'affordability' } & Affordability) | ScenarioCard | SnapshotCard
+export type ToolCard = ({ kind: 'payment_options' } & PaymentComparison) | ({ kind: 'affordability' } & Affordability)
+  | ScenarioCard | SnapshotCard | ({ kind: 'cross_border' } & CrossBorder)
+
+// ---- Compare scenarios -------------------------------------------------------------------------
+export interface NamedScenario { name: string; changes: ScenarioChange[] }
+export interface SavedScenario extends NamedScenario { id: number; created_at: string }
+export interface ComparedScenario {
+  id: string; name: string; applied: AppliedChange[]; notes: string[]; series: number[]
+  end_balance: number; end_delta: number; min_balance: number; min_balance_date: ISODate
+  first_below_buffer: ISODate | null; days_below_buffer: number; safe: boolean; monthly_effect: number
+  impacts: { day: number; on: ISODate; baseline: number; scenario: number; delta: number }[]; best: boolean
+}
+export interface ScenarioComparison {
+  as_of: ISODate; assumptions: Assumptions; dates: ISODate[]; baseline_series: number[]
+  baseline_end: number; baseline_min: number; scenarios: ComparedScenario[]; best_id: string | null; summary: string[]
+}
+
+// ---- Alerts ------------------------------------------------------------------------------------
+export interface Alert {
+  id: string; kind: string; level: 'critical' | 'warning' | 'info'; title: string; detail: string
+  on: ISODate | null; amount: number | null; action: { label: string; to: string } | null
+}
+export interface AlertsView { alerts: Alert[]; dismissed: number }
+
+// ---- Cross-border --------------------------------------------------------------------------------
+export interface CurrencySummary {
+  currency: string; payments: number; first_on: ISODate; last_on: ISODate; gross: number; fees: number; net: number
+  received_home: number; fee_pct: string; fee_cost_home: number; avg_rate: number; latest_rate: number
+  latest_rate_on: ISODate; reference_rate: number | null; spread_pct: string | null; spread_cost_home: number | null
+}
+export interface ForeignClient { merchant: string; currency: string; monthly_foreign: number; monthly_home: number; next_date: ISODate; share_of_income: string }
+export interface FxSensitivity { change_pct: number; monthly_effect: number; end_balance_delta: number; min_balance: number; below_buffer: boolean }
+export interface CrossBorder {
+  as_of: ISODate; has_foreign: boolean; home_currency: string; currencies: CurrencySummary[]; clients: ForeignClient[]
+  foreign_share: string; sensitivity: FxSensitivity[]; sensitivity_currency: string | null
+  late_client: { merchant: string; days: number; min_balance: number; min_balance_date: ISODate; first_below_buffer: ISODate | null; baseline_min_balance: number } | null
+  insights: string[]; withdrawal_note: string; disclaimer: string
+}
 
 export interface ToolCall { tool: string; arguments: Record<string, unknown>; ok: boolean; summary: Record<string, unknown>; card: ToolCard | null }
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
+/** What the previous answer computed; sent back with the next question so follow-ups build on it. */
+export interface ChatContext { tool: string; arguments: Record<string, unknown> }
 export interface ChatResponse {
   reply: string
   mode: 'llm' | 'rules'
@@ -351,6 +393,8 @@ export interface ChatResponse {
   verified: boolean
   guardrail: 'passed' | 'replaced' | null
   note: string | null
+  built_on: string | null
+  context: ChatContext | null
   tool_calls: ToolCall[]
 }
 export interface AssistantStatus { mode: 'llm' | 'rules'; model: string | null; guardrail: string }

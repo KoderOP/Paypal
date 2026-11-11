@@ -65,7 +65,9 @@ TOOL_SPECS: list[dict[str, Any]] = [
                 "type": "object", "required": ["type"], "properties": {
                     "type": {"type": "string", "enum": ["purchase", "cancel_subscriptions", "income_delay",
                                                         "increase_savings", "expense_increase", "unexpected_payment",
-                                                        "add_subscription"]},
+                                                        "add_subscription", "fx_change"]},
+                    "currency": {"type": "string", "description": "fx_change: foreign currency, e.g. USD"},
+                    "merchant": {"type": "string", "description": "income_delay: only this payer/client is late"},
                     "amount": {"type": "number",
                                "description": "purchase / unexpected_payment amount, or add_subscription monthly price (INR)"},
                     "on": {"type": "string", "format": "date", "description": "YYYY-MM-DD, default today"},
@@ -76,8 +78,14 @@ TOOL_SPECS: list[dict[str, Any]] = [
                     "count": {"type": "integer", "description": "cancel_subscriptions: cancel the N most expensive"},
                     "days": {"type": "integer", "description": "income_delay: days late"},
                     "all_future": {"type": "boolean", "description": "income_delay: delay every payment, not just the next"},
-                    "percent": {"type": "number", "description": "increase_savings / expense_increase (negative = cut)"},
+                    "percent": {"type": "number", "description": "increase_savings / expense_increase (negative = cut); "
+                                "fx_change: % move in FOREIGN/INR, e.g. -3 when USD/INR drops 3%"},
                 }}}}}}},
+    {"type": "function", "function": {
+        "name": "get_cross_border_summary",
+        "description": "For freelancers paid from abroad via PayPal: foreign income by client, PayPal fees, the rates "
+                       "PayPal applied, conversion cost vs a reference rate, FX sensitivity and late-client risk.",
+        "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
 ]
 
 
@@ -91,6 +99,8 @@ def run_tool(name: str, args: dict, db: Session, user: User) -> ToolOutcome:
             return _affordability(db, user, args)
         if name == "simulate_scenario":
             return _scenario(db, user, args)
+        if name == "get_cross_border_summary":
+            return _cross_border(db, user)
         return ToolOutcome(name, args, False, {"error": f"Unknown tool {name}"})
     except ValidationError as exc:
         return ToolOutcome(name, args, False, {"error": "Invalid arguments", "details": [e["msg"] for e in exc.errors()][:5]})
@@ -157,6 +167,23 @@ def _affordability(db: Session, user: User, args: dict) -> ToolOutcome:
     card = {"kind": "affordability", **r.model_dump(mode="json")}
     return ToolOutcome("find_affordability", {k: v for k, v in {"amount": _f(amount), "search_days": days}.items() if v},
                        True, summary, card, r.explanation)
+
+
+def _cross_border(db: Session, user: User) -> ToolOutcome:
+    cb = planning.cross_border_view(db, user)
+    summary = {
+        "has_foreign_income": cb.has_foreign, "foreign_share_of_regular_income": float(cb.foreign_share),
+        "currencies": [c.model_dump(mode="json") for c in cb.currencies],
+        "clients": [c.model_dump(mode="json") for c in cb.clients],
+        "fx_sensitivity": [s.model_dump(mode="json") for s in cb.sensitivity],
+        "late_client": cb.late_client.model_dump(mode="json") if cb.late_client else None,
+        "withdrawal_note": cb.withdrawal_note,
+    }
+    lines = cb.insights + [cb.withdrawal_note] if cb.has_foreign else [
+        "No foreign-currency income was found. Upload a PayPal Activity report that includes your international "
+        "payments and PayPal's currency conversions to see fees, rates and FX risk."]
+    return ToolOutcome("get_cross_border_summary", {}, True, summary,
+                       {"kind": "cross_border", **cb.model_dump(mode="json")}, lines)
 
 
 def _scenario(db: Session, user: User, args: dict) -> ToolOutcome:

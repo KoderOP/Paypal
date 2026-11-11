@@ -18,7 +18,7 @@ from typing import Literal
 
 from app.core.money import money
 from app.data.categorize import categorize
-from app.data.sources.base import NormalizedTransaction
+from app.data.sources.base import FxInfo, NormalizedTransaction
 
 FileFormat = Literal["transactions", "bank_statement", "paypal_activity"]
 FORMAT_SOURCE: dict[str, str] = {"transactions": "csv", "bank_statement": "bank_statement", "paypal_activity": "paypal"}
@@ -41,7 +41,11 @@ ALIASES = {
     "pp_type": ("type",),
     "pp_name": ("name",),
     "pp_currency": ("currency",),
+    "pp_fee": ("fee",),
+    "pp_ref": ("reference txn id", "reference transaction id"),
+    "pp_time": ("time",),
 }
+RATE_PLACES = Decimal("0.000001")
 
 
 class CsvValidationError(ValueError):
@@ -198,53 +202,163 @@ def _merchant_from_narration(desc: str) -> str:
     return desc[:120]
 
 
-def parse_paypal_activity(t: _Table) -> ParsedFile:
+@dataclass
+class _PPRow:
+    line: int
+    on: date
+    time: str
+    currency: str
+    type: str
+    name: str
+    txn_id: str
+    ref: str
+    gross: Decimal
+    fee: Decimal
+    net: Decimal
+    balance: Decimal | None
+
+    @property
+    def is_conversion(self) -> bool:
+        return "currency conversion" in self.type.lower()
+
+
+@dataclass
+class _Conversion:
+    on: date
+    time: str
+    ref: str
+    currency: str  # the foreign side
+    foreign: Decimal  # |foreign leg|
+    home: Decimal  # |home leg|
+    used: bool = False
+
+    @property
+    def rate(self) -> Decimal:
+        return (self.home / self.foreign).quantize(RATE_PLACES)
+
+
+def _paypal_rows(t: _Table) -> tuple[list[_PPRow], int, list[str]]:
+    rows, errors, skipped = [], [], 0
     amount_key = t.key("pp_net") or t.key("pp_gross")
-    dated, errors, warnings = [], [], []
-    skipped = 0
-    currencies: set[str] = set()
     for line, row in enumerate(t.rows, start=2):
         status = _get(row, t.key("pp_status")).lower()
         if status and status not in ("completed", "success", "s"):
             skipped += 1
             continue
         try:
-            dated.append((parse_date(_get(row, t.key("date"))), {**row, "__line": line}))
+            on = parse_date(_get(row, t.key("date")))
+            net = parse_amount(_get(row, amount_key))
+            fee = parse_amount(_get(row, t.key("pp_fee")), allow_blank=True)
+            gross_raw = _get(row, t.key("pp_gross"))
+            gross = parse_amount(gross_raw) if gross_raw else money(net - fee)
+            bal = _get(row, t.key("balance"))
+            balance = parse_amount(bal) if bal else None
         except ValueError as exc:
             errors.append(f"line {line}: {exc}")
-        cur = _get(row, t.key("pp_currency"))
-        if cur:
-            currencies.add(cur.upper())
-    if len(currencies) > 1:
-        errors.append(f"Multiple currencies found ({', '.join(sorted(currencies))}). Export one currency per file.")
-    if errors:
-        raise CsvValidationError(errors)
-    if skipped:
-        warnings.append(f"{skipped} non-completed PayPal transaction(s) were skipped.")
-    if currencies and currencies != {"INR"}:
-        warnings.append(f"Amounts are in {next(iter(currencies))}; FINORA displays them as-is.")
-
-    out, opening = [], None
-    for d, row in _chronological(dated):
-        try:
-            amt = parse_amount(_get(row, amount_key))
-        except ValueError as exc:
-            errors.append(f"line {row['__line']}: {exc}")
             continue
-        if amt == 0:
-            continue
-        ptype = _get(row, t.key("pp_type")) or "PayPal transaction"
-        name = _get(row, t.key("pp_name")) or ptype
         txn_id = _get(row, t.key("pp_txn"))
         if not txn_id:
-            errors.append(f"line {row['__line']}: missing Transaction ID")
+            errors.append(f"line {line}: missing Transaction ID")
             continue
-        if opening is None and _get(row, t.key("balance")):
-            opening = _opening_from_balance(amt, parse_amount(_get(row, t.key("balance"))))
-        desc = f"{ptype} · {name}" if name != ptype else ptype
-        out.append(NormalizedTransaction(f"pp-{txn_id}", d, desc[:255], name[:120], categorize(f"{name} {ptype}", amt > 0), amt))
+        ptype = _get(row, t.key("pp_type")) or "PayPal transaction"
+        rows.append(_PPRow(line, on, _get(row, t.key("pp_time")), (_get(row, t.key("pp_currency")) or "").upper(),
+                           ptype, _get(row, t.key("pp_name")) or ptype, txn_id, _get(row, t.key("pp_ref")),
+                           gross, fee, net, balance))
     if errors:
         raise CsvValidationError(errors)
+    if len(rows) > 1 and rows[0].on > rows[-1].on:  # newest-first export
+        rows.reverse()
+    return rows, skipped, []
+
+
+def _conversions(rows: list[_PPRow], home: str) -> list[_Conversion]:
+    """Pair PayPal's two-legged 'General Currency Conversion' rows into rates actually applied."""
+    groups: dict[tuple, list[_PPRow]] = {}
+    for r in rows:
+        if r.is_conversion:
+            groups.setdefault((r.ref,) if r.ref else (r.on, r.time), []).append(r)
+    out = []
+    for legs in groups.values():
+        home_leg = next((r for r in legs if r.currency == home), None)
+        foreign_leg = next((r for r in legs if r.currency and r.currency != home), None)
+        if home_leg and foreign_leg and foreign_leg.net != 0:
+            out.append(_Conversion(foreign_leg.on, foreign_leg.time, foreign_leg.ref, foreign_leg.currency,
+                                   abs(foreign_leg.net), abs(home_leg.net)))
+    return out
+
+
+def _match_conversion(r: _PPRow, convs: list[_Conversion]) -> tuple[_Conversion | None, str]:
+    same = [c for c in convs if c.currency == r.currency]
+    exact = next((c for c in same if not c.used and r.txn_id and c.ref == r.txn_id), None) or \
+        next((c for c in same if not c.used and c.on == r.on and c.foreign == abs(r.net)), None)
+    if exact:
+        return exact, "paypal_conversion"
+    if same:  # converted later or in bulk: use the closest conversion PayPal actually made
+        return min(same, key=lambda c: (abs((c.on - r.on).days), c.on)), "nearest_conversion"
+    return None, ""
+
+
+def parse_paypal_activity(t: _Table) -> ParsedFile:
+    """PayPal Activity report, including cross-border reports with several currencies.
+
+    Foreign-currency rows (e.g. a USD client payment) are converted into the home currency (INR when present)
+    using PayPal's own 'General Currency Conversion' rows from the same report: the exact paired conversion when
+    there is one, otherwise PayPal's nearest conversion of that currency. Conversion rows themselves are not
+    transactions. Original currency, gross, PayPal fee, net and the applied rate are kept on each transaction.
+    """
+    rows, skipped, warnings = _paypal_rows(t)
+    currencies = {r.currency for r in rows if r.currency}
+    home = "INR" if "INR" in currencies or not currencies else max(currencies, key=lambda c: sum(r.currency == c for r in rows))
+    if skipped:
+        warnings.append(f"{skipped} non-completed PayPal transaction(s) were skipped.")
+    if currencies and home != "INR":
+        warnings.append(f"Amounts are in {home}; FINORA displays them as-is.")
+    convs = _conversions(rows, home) if len(currencies) > 1 else []
+
+    out: list[NormalizedTransaction] = []
+    errors: list[str] = []
+    emitted_by_line: dict[int, Decimal] = {}
+    approx = 0
+    for r in rows:
+        if r.is_conversion or r.net == 0:
+            continue
+        desc = f"{r.type} · {r.name}" if r.name != r.type else r.type
+        cat = categorize(f"{r.name} {r.type}", r.net > 0)
+        if not r.currency or r.currency == home:
+            out.append(NormalizedTransaction(f"pp-{r.txn_id}", r.on, desc[:255], r.name[:120], cat, r.net))
+            emitted_by_line[r.line] = r.net
+            continue
+        conv, source = _match_conversion(r, convs)
+        if conv is None:
+            errors.append(f"line {r.line}: can't convert {r.currency} to {home}. The report has no {r.currency} "
+                          f"currency-conversion rows. Include them in the export.")
+            continue
+        if source == "paypal_conversion":
+            conv.used = True
+            amount = money(conv.home if r.net > 0 else -conv.home)
+        else:
+            amount = money(r.net * conv.rate)
+            approx += 1
+        fx = FxInfo(r.currency, r.gross, r.fee, r.net, conv.rate, source)
+        out.append(NormalizedTransaction(f"pp-{r.txn_id}", r.on, f"{desc} ({r.currency} {r.net:,.2f})"[:255],
+                                         r.name[:120], cat, amount, fx))
+        emitted_by_line[r.line] = amount
+    if errors:
+        raise CsvValidationError(errors)
+    if approx:
+        warnings.append(f"{approx} {', '.join(sorted(currencies - {home}))} transaction(s) had no matching conversion; "
+                        "PayPal's nearest conversion rate was used.")
+    if convs and any(not c.used for c in convs) and approx == 0:
+        warnings.append("Some currency conversions weren't linked to a payment in this report (e.g. converting an "
+                        "older balance); they're not counted as income.")
+
+    # Opening balance: the first home-currency row with a running balance, minus everything emitted up to it.
+    opening, running = None, Decimal("0")
+    for r in rows:
+        running += emitted_by_line.get(r.line, Decimal("0"))
+        if r.balance is not None and (r.currency in ("", home)):
+            opening = money(r.balance - running)
+            break
     return ParsedFile("paypal_activity", out, opening, warnings)
 
 

@@ -22,4 +22,5 @@ def status():
 def assistant_chat(body: ChatRequest, db: Session = Depends(get_db), llm: LlmClient | None = Depends(get_llm)):
     user = repo.get_primary_user(db)
     repo.build_user_profile(db, user, repo.assumptions_for(user))  # 404 with a clear message when there's no data
-    return chat([m.model_dump() for m in body.messages], db, user, llm)
+    return chat([m.model_dump() for m in body.messages], db, user, llm,
+                body.context.model_dump() if body.context else None)
