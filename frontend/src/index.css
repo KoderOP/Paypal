@@ -20,7 +20,8 @@
 :root {
   --series-1: #2a78d6; /* actual / baseline / income */
   --series-2: #eb6834; /* scenario / spending */
-  --series-3: #1baf7a; /* investments */
+  --series-3: #1baf7a; /* investments / Pay in 4 */
+  --series-4: #eda100; /* Pay Monthly (validated 4-slot set; under 3:1, so values are always shown as text too) */
   --status-good: #0ca30c;
   --status-warning: #fab219;
   --status-critical: #d03b3b;

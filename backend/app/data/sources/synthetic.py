@@ -1,8 +1,13 @@
 """Deterministic synthetic Indian financial history (INR).
 
-Profile: salaried professional, ₹65,000/month salary, ~₹36,000 monthly spending and a
-₹10,000 monthly SIP. Six months of transaction-level history are generated relative to
-`today`; the next salary always lands 12 days after `today`.
+Profiles:
+- "salaried" (default): ₹65,000/month salary, ~₹36,000 monthly spending and a ₹10,000 monthly
+  SIP. The next salary always lands 12 days after `today`.
+- "freelancer": the same spending, but income comes from two US clients paying in USD through
+  PayPal (fee deducted, then converted to INR). The larger client's next payment is 12 days out.
+  Fee and exchange-rate figures are illustrative, not PayPal's actual pricing.
+
+Six months of transaction-level history are generated relative to `today`.
 
 The opening balance is *back-solved* so that opening + Σ transactions == the target
 current balance (₹1,10,000). Every dashboard figure is then derived from transactions.
@@ -13,7 +18,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.core.money import money
-from app.data.sources.base import NormalizedTransaction
+from app.data.sources.base import FxInfo, NormalizedTransaction
 
 TARGET_CURRENT_BALANCE = Decimal("110000.00")
 HISTORY_DAYS = 183
@@ -50,6 +55,20 @@ VARIABLE: list[tuple[float, int | None, str, str, str, tuple[int, int]]] = [
 ]
 FUEL_DAYS = (4, 19)
 
+# Freelancer persona (illustrative figures, labelled synthetic in the UI).
+# (client, monthly gross in USD, day offset: None = the "12 days out" payday, else fixed day of month)
+FREELANCE_CLIENTS: list[tuple[str, Decimal, int | None]] = [
+    ("Brightline Labs LLC", Decimal("600"), None),
+    ("Northwind Studio Inc", Decimal("250"), 27),
+]
+FX_MID_START = Decimal("84.00")  # illustrative USD/INR mid-market starting point
+FX_SPREAD = Decimal("0.03")  # illustrative conversion spread applied to the mid rate
+FEE_PCT, FEE_FIXED = Decimal("0.044"), Decimal("0.30")  # illustrative cross-border receiving fee
+
+
+def usd_fee(gross: Decimal) -> Decimal:
+    return -money(gross * FEE_PCT + FEE_FIXED)
+
 
 def _add_months(d: date, months: int) -> date:
     m = d.month - 1 + months
@@ -64,27 +83,50 @@ def next_salary_date(today: date) -> date:
 class SyntheticSource:
     name = "synthetic"
 
-    def __init__(self, today: date, seed: int = 42):
+    def __init__(self, today: date, seed: int = 42, persona: str = "salaried"):
         self.today = today
         self.seed = seed
+        self.persona = persona
         self.start = today - timedelta(days=HISTORY_DAYS)
+
+    def fx_rate(self, d: date) -> tuple[Decimal, Decimal]:
+        """(illustrative mid-market USD/INR, rate applied after the conversion spread) on day d."""
+        rng = random.Random(f"{self.seed}-fx-{d.isoformat()}")
+        days = (d - self.start).days
+        mid = (FX_MID_START + Decimal(days) * Decimal("0.004") + Decimal(rng.randint(-15, 15)) / 100).quantize(Decimal("0.0001"))
+        return mid, (mid * (1 - FX_SPREAD)).quantize(Decimal("0.000001"))
 
     def fetch(self) -> list[NormalizedTransaction]:
         rng = random.Random(self.seed)
         txns: list[NormalizedTransaction] = []
         seq = 0
 
-        def add(d: date, desc: str, merchant: str, category: str, amount: Decimal) -> None:
+        def add(d: date, desc: str, merchant: str, category: str, amount: Decimal, fx: FxInfo | None = None) -> None:
             nonlocal seq
             seq += 1
-            txns.append(NormalizedTransaction(f"syn-{d.isoformat()}-{seq:05d}", d, desc, merchant, category, money(amount)))
+            txns.append(NormalizedTransaction(f"syn-{d.isoformat()}-{seq:05d}", d, desc, merchant, category, money(amount), fx))
 
-        # Salary credits on the same day-of-month as the upcoming salary.
+        def add_usd(d: date, client: str, gross: Decimal) -> None:
+            fee = usd_fee(gross)
+            net = money(gross + fee)
+            _, rate = self.fx_rate(d)
+            add(d, f"Payment Received · {client} (USD {net:,.2f})", client, "Income", money(net * rate),
+                FxInfo("USD", money(gross), fee, net, rate, "paypal_conversion"))
+
         upcoming = next_salary_date(self.today)
-        for k in range(1, 8):
-            pay_day = _add_months(upcoming, -k)
-            if self.start <= pay_day < self.today:
-                add(pay_day, "Salary credit - Acme Technologies Pvt Ltd", "Acme Technologies", "Income", SALARY)
+        if self.persona == "freelancer":
+            for client, gross, dom in FREELANCE_CLIENTS:
+                anchor = upcoming if dom is None else upcoming.replace(day=min(dom, 28))
+                for k in range(0 if dom is not None else 1, 8):
+                    pay_day = _add_months(anchor, -k)
+                    if self.start <= pay_day < self.today:
+                        add_usd(pay_day, client, gross)
+        else:
+            # Salary credits on the same day-of-month as the upcoming salary.
+            for k in range(1, 8):
+                pay_day = _add_months(upcoming, -k)
+                if self.start <= pay_day < self.today:
+                    add(pay_day, "Salary credit - Acme Technologies Pvt Ltd", "Acme Technologies", "Income", SALARY)
 
         d = self.start
         while d < self.today:  # history up to yesterday; forecasting starts today
@@ -109,6 +151,9 @@ class SyntheticSource:
             (33, "Smartphone accessories", "Croma", "Shopping", Decimal("-3499")),
         ]
         for days_ago, desc, merchant, cat, amt in one_offs:
+            if self.persona == "freelancer" and merchant == "Upwork":
+                add_usd(self.today - timedelta(days=days_ago), "Upwork Global Inc", Decimal("120"))
+                continue
             add(self.today - timedelta(days=days_ago), desc, merchant, cat, amt)
 
         txns.sort(key=lambda t: (t.posted_on, t.external_id))

@@ -1,9 +1,12 @@
 import {
-  AlertOctagon, AlertTriangle, CalendarDays, CheckCircle2, Clock, Hourglass, Info, Laptop, Lock, Plane, ShieldCheck,
+  AlertOctagon, AlertTriangle, CalendarDays, CheckCircle2, Clock, Hourglass, Info, Laptop, Plane, ShieldCheck,
   Smartphone, Sofa, Sparkles, TrendingDown, XCircle,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { ScenarioChart } from '../components/charts/ScenarioChart'
+import { GoalSolver } from '../components/GoalSolver'
+import { PaymentOptions } from '../components/PaymentOptions'
 import { Badge, ProjectedTag } from '../components/ui/Badge'
 import { Card, CardHeader } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -11,7 +14,7 @@ import { ErrorState, Skeleton } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
 import { addDays, fmtDate, fmtShort, inr, inrCompact, signedInr } from '../lib/format'
-import type { PurchaseSimulation, Risk, TimingOption } from '../lib/types'
+import type { Affordability, PaymentComparison, PurchaseSimulation, Risk, TimingOption } from '../lib/types'
 
 const PRESETS = [
   { label: 'Laptop', amount: 75000, icon: Laptop },
@@ -29,7 +32,8 @@ function useDebounced<T>(value: T, ms: number): T {
   return v
 }
 
-export default function Simulator() {
+/** Purchase simulator. Rendered inside the What-if Simulator tab, which passes the shared header. */
+export default function Simulator({ header }: { header?: ReactNode } = {}) {
   const [label, setLabel] = useState('Laptop purchase')
   const [amountText, setAmountText] = useState('75000')
   const [date, setDate] = useState<string | null>(null) // null = today
@@ -38,6 +42,8 @@ export default function Simulator() {
   const [error, setError] = useState<ApiError | null>(null)
   const [running, setRunning] = useState(false)
   const [nonce, setNonce] = useState(0)
+  const [cmp, setCmp] = useState<PaymentComparison | null>(null)
+  const [aff, setAff] = useState<Affordability | null>(null)
   const scenarios = useApi(api.scenarios)
 
   const amount = Number(amountText.replace(/,/g, ''))
@@ -68,16 +74,33 @@ export default function Simulator() {
     }
   }, [request])
 
+  // Buy now / wait / split + goal solver depend on amount, label and buffer (not on the chosen date).
+  const { amount: reqAmount, label: reqLabel, buffer: reqBuffer, nonce: reqNonce } = request
+  useEffect(() => {
+    if (!(Number.isFinite(reqAmount) && reqAmount > 0 && reqAmount <= 1e8)) return
+    let cancelled = false
+    const buffer = reqBuffer ?? undefined
+    Promise.all([
+      api.paymentOptions({ amount: reqAmount, label: reqLabel, safety_buffer: buffer }),
+      api.affordability({ amount: reqAmount, search_days: 60, safety_buffer: buffer }),
+    ])
+      .then(([c, a]) => { if (!cancelled) { setCmp(c); setAff(a) } })
+      .catch(() => { if (!cancelled) { setCmp(null); setAff(null) } })
+    return () => { cancelled = true }
+  }, [reqAmount, reqLabel, reqBuffer, reqNonce])
+
   const asOf = sim?.as_of
   const maxDate = asOf ? addDays(asOf, sim!.assumptions.horizon_days) : undefined
 
   return (
     <>
-      <PageHeader
-        eyebrow="What-if Simulator"
-        title="Simulate a decision before you make it"
-        description="Your financial twin replays your income, bills, obligations and day-to-day spending day by day — with and without the purchase — and tests alternative dates to find the safest moment to buy."
-      />
+      {header ?? (
+        <PageHeader
+          eyebrow="What-if Simulator"
+          title="Simulate a decision before you make it"
+          description="Your financial twin replays your income, bills, obligations and day-to-day spending day by day — with and without the purchase — and tests alternative dates to find the safest moment to buy."
+        />
+      )}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
           <Card>
@@ -148,7 +171,13 @@ export default function Simulator() {
         <div className={`min-w-0 space-y-6 transition-opacity ${running && sim ? 'opacity-60' : ''}`} aria-live="polite" aria-busy={running}>
           {error && <ErrorState error={error} onRetry={() => setNonce((n) => n + 1)} />}
           {!sim && !error && <ResultSkeleton />}
-          {sim && <Results sim={sim} onPickDate={(d) => setDate(d === sim.as_of ? null : d)} />}
+          {sim && (
+            <Results sim={sim} onPickDate={(d) => setDate(d === sim.as_of ? null : d)}
+              planning={<>
+                {cmp ? <PaymentOptions cmp={cmp} onChanged={() => setNonce((n) => n + 1)} /> : <Skeleton className="h-96" />}
+                {aff && <GoalSolver data={aff} amount={amount} />}
+              </>} />
+          )}
         </div>
       </div>
     </>
@@ -180,7 +209,7 @@ const VERDICT = {
   not_recommended: { tone: 'from-red-700 to-red-800', Icon: XCircle, tag: 'Not recommended', ring: 'ring-red-500/30' },
 } as const
 
-function Results({ sim, onPickDate }: { sim: PurchaseSimulation; onPickDate: (d: string) => void }) {
+function Results({ sim, onPickDate, planning }: { sim: PurchaseSimulation; onPickDate: (d: string) => void; planning?: ReactNode }) {
   const rec = sim.recommendation
   const v = VERDICT[rec.verdict]
   const selected = sim.timing_options.find((o) => o.is_selected)!
@@ -219,6 +248,8 @@ function Results({ sim, onPickDate }: { sim: PurchaseSimulation; onPickDate: (d:
         <Metric label="Emergency runway" value={`${sim.runway_months_after} mo`} sub={`from ${sim.runway_months_before} months today`} />
         <Metric label="Recovery time" value={sim.months_to_recover ? `${sim.months_to_recover} mo` : '—'} sub={`at ${inr(sim.monthly_surplus)}/mo surplus`} />
       </div>
+
+      {planning}
 
       <Card>
         <CardHeader title="90-day balance projection" subtitle="Day-by-day simulation, with and without the purchase" action={<ProjectedTag />} />
@@ -367,20 +398,33 @@ function RiskRow({ risk }: { risk: Risk }) {
   )
 }
 
+// What-ifs that aren't purchases open in the assistant, which runs them on the same engine.
+const ASK: Record<string, string> = {
+  add_subscription: 'What if I add a ₹499/month gym membership?',
+  cancel_subscriptions: 'What if I cancel three subscriptions?',
+  income_delay: 'What if my income is delayed by 15 days?',
+  increase_savings: 'What if I increase my monthly savings by 10%?',
+  unexpected_payment: 'What if I have an unexpected medical bill of ₹30,000?',
+  expense_increase: 'What if my expenses increase by 20%?',
+}
+
 function ScenarioLibrary({ items }: { items: { type: string; title: string; description: string; status: string }[] }) {
-  const planned = useMemo(() => items.filter((i) => i.status === 'planned'), [items])
-  if (!planned.length) return null
+  const more = useMemo(() => items.filter((i) => ASK[i.type]), [items])
+  if (!more.length) return null
   return (
     <Card>
-      <CardHeader title="Scenario library" subtitle="More what-ifs on the roadmap" />
-      <ul className="space-y-2">
-        {planned.map((s) => (
-          <li key={s.type} className="flex items-start gap-2.5 rounded-lg px-1 py-1 text-navy-400">
-            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <div>
-              <p className="text-[13px] font-medium text-navy-700">{s.title}</p>
-              <p className="text-[11px]">{s.description}</p>
-            </div>
+      <CardHeader title="More what-ifs" subtitle="Ask the AI assistant, or compare several side by side"
+        action={<Link to="/simulator?view=compare" className="text-xs font-semibold text-navy-900 hover:underline">Compare →</Link>} />
+      <ul className="space-y-1">
+        {more.map((s) => (
+          <li key={s.type}>
+            <Link to={`/assistant?q=${encodeURIComponent(ASK[s.type])}`} className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-50">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
+              <div>
+                <p className="text-[13px] font-medium text-navy-800">{s.title}</p>
+                <p className="text-[11px] text-navy-400">{s.description}</p>
+              </div>
+            </Link>
           </li>
         ))}
       </ul>

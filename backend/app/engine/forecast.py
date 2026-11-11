@@ -66,6 +66,7 @@ def baseline_events(profile: FinancialProfile, a: Assumptions, horizon_days: int
                         label=item.name,
                         category=item.category,
                         kind="income" if item.direction == "in" else "recurring",
+                        ref=item.key,
                     )
                 )
             d = add_months(d, 1, item.day_of_month)

@@ -18,7 +18,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from app.core.money import ZERO, money, ratio, total
-from app.data.categorize import ESSENTIAL_CATEGORIES, SAVINGS_CATEGORIES
+from app.data.categorize import ESSENTIAL_CATEGORIES, SAVINGS_CATEGORIES, TRANSFER_CATEGORIES
 from app.engine.types import Assumptions, Money, ObligationIn, Txn, add_months
 
 MONTHLY_INTERVAL = (25, 35)
@@ -37,8 +37,13 @@ class RecurringItem(BaseModel):
     amount: Money
     day_of_month: int
     occurrences: int
-    last_date: date
+    last_date: date | None  # None for items added by the user or from PayPal before any payment is seen
     next_date: date
+    # detected = learned from transactions · manual = added by the user · paypal = PayPal Subscriptions API
+    source: Literal["detected", "manual", "paypal"] = "detected"
+    # Set when this income arrives in a foreign currency (e.g. a US client paying in USD via PayPal).
+    currency: str | None = None
+    foreign_amount: Money | None = None  # median net received in `currency`, after PayPal's fee
 
 
 class CategorySpend(BaseModel):
@@ -97,6 +102,8 @@ def _kind(category: str, direction: str) -> str:
 def detect_recurring(txns: list[Txn], as_of: date) -> list[RecurringItem]:
     groups: dict[tuple[str, str], list[Txn]] = defaultdict(list)
     for t in txns:
+        if t.category in TRANSFER_CATEGORIES:
+            continue  # moving your own money between accounts is neither income nor a bill
         groups[(_norm(t.merchant), "in" if t.amount > 0 else "out")].append(t)
 
     items: list[RecurringItem] = []
@@ -123,8 +130,12 @@ def detect_recurring(txns: list[Txn], as_of: date) -> list[RecurringItem]:
         while nxt < as_of:
             nxt = add_months(nxt, 1, dom)
         latest = group[-1]
+        recent_fx = [t.fx for t in group[-3:] if t.fx]
+        foreign = recent_fx[-1].currency if len(recent_fx) >= 2 else None  # most recent payments were foreign
         items.append(
             RecurringItem(
+                currency=foreign,
+                foreign_amount=money(Decimal(median(f.net for f in recent_fx))) if foreign else None,
                 key=f"{direction}:{key}",
                 name=latest.description,
                 merchant=latest.merchant,
@@ -142,9 +153,57 @@ def detect_recurring(txns: list[Txn], as_of: date) -> list[RecurringItem]:
     return items
 
 
+def merchant_key(merchant: str) -> str:
+    """The key a detected outflow from this merchant gets, used to spot duplicates of added items."""
+    return f"out:{_norm(merchant)}"
+
+
+def with_added(profile: "FinancialProfile", added: list[RecurringItem]) -> "FinancialProfile":
+    """Merge recurring outflows the user added (or that come from PayPal) into the twin.
+
+    An added item whose merchant is already *detected* from transactions is skipped: once real
+    payments appear in the history, the detected item takes over, so nothing is counted twice.
+    Next dates in the past roll forward to the next occurrence on or after `as_of`.
+    """
+    detected = {r.key for r in profile.recurring_outflows}
+    fresh: list[RecurringItem] = []
+    for item in added:
+        if merchant_key(item.merchant) in detected or item.key in detected:
+            continue
+        nxt = item.next_date
+        while nxt < profile.as_of:
+            nxt = add_months(nxt, 1, item.day_of_month)
+        fresh.append(item.model_copy(update={"next_date": nxt}))
+    if not fresh:
+        return profile
+    outs = profile.recurring_outflows + fresh
+    return profile.model_copy(update={
+        "recurring_outflows": outs,
+        "recurring_outflow_monthly": total(r.amount for r in outs),
+        "subscriptions_monthly": total(r.amount for r in outs if r.kind == "subscription"),
+    })
+
+
+def without_cancelled(profile: "FinancialProfile", cancelled_keys: set[str]) -> "FinancialProfile":
+    """Drop recurring outflows the user has cancelled (via PayPal or manually) from future projections.
+
+    History is untouched; only what the twin *expects* to happen changes. Totals are recomputed.
+    """
+    keep = [r for r in profile.recurring_outflows if r.key not in cancelled_keys]
+    if len(keep) == len(profile.recurring_outflows):
+        return profile
+    return profile.model_copy(update={
+        "recurring_outflows": keep,
+        "recurring_outflow_monthly": total(r.amount for r in keep),
+        "subscriptions_monthly": total(r.amount for r in keep if r.kind == "subscription"),
+    })
+
+
 def _month_summaries(txns: list[Txn], as_of: date) -> list[MonthSummary]:
     buckets: dict[str, dict[str, Decimal]] = defaultdict(lambda: {"income": ZERO, "spending": ZERO, "investments": ZERO})
     for t in txns:
+        if t.category in TRANSFER_CATEGORIES:
+            continue
         b = buckets[t.posted_on.strftime("%Y-%m")]
         if t.amount > 0:
             b["income"] += t.amount
@@ -184,7 +243,7 @@ def build_profile(
     rec_out = [r for r in recurring if r.direction == "out"]
 
     lb_start = as_of - timedelta(days=a.lookback_days)
-    window_txns = [t for t in txns if lb_start <= t.posted_on < as_of]
+    window_txns = [t for t in txns if lb_start <= t.posted_on < as_of and t.category not in TRANSFER_CATEGORIES]
     history_days = (as_of - min((t.posted_on for t in txns), default=as_of)).days
     span = Decimal(max(1, min(a.lookback_days, history_days)))
     per_month = lambda amount: money(amount * WINDOW / span)  # noqa: E731
@@ -208,7 +267,7 @@ def build_profile(
     n_windows = max(1, min(3, int(span) // WINDOW))
     var_windows: dict[str, list[Decimal]] = defaultdict(lambda: [ZERO] * n_windows)
     for t in txns:
-        if t.amount >= 0 or f"out:{_norm(t.merchant)}" in recurring_keys:
+        if t.amount >= 0 or f"out:{_norm(t.merchant)}" in recurring_keys or t.category in TRANSFER_CATEGORIES:
             continue
         idx = (as_of - t.posted_on).days - 1
         if 0 <= idx < n_windows * WINDOW:

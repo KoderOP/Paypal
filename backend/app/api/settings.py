@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.integrations.paypal.client import paypal_runtime
 from app.integrations.paypal.source import PayPalSource
 from app.schemas.api import SettingsOut, SettingsUpdate
 from app.services import repository as repo
@@ -17,7 +18,7 @@ def _settings_out(db: Session) -> SettingsOut:
     return SettingsOut(
         user_name=user.name, currency=user.currency, data_source=(user.preferences or {}).get("data_source"),
         has_data=has_data(db, user), assumptions=repo.assumptions_for(user),
-        paypal=PayPalSource(s).status(), ai_configured=bool(s.openai_api_key),
+        paypal=PayPalSource(paypal_runtime()[0]).status(), ai_configured=bool(s.openai_api_key),
     )
 
 

@@ -8,6 +8,18 @@ from pydantic import BaseModel, Field, PlainSerializer
 
 # Money is computed as Decimal everywhere; serialised to a JSON number (2dp) only at the API edge.
 Money = Annotated[Decimal, PlainSerializer(lambda v: float(v), return_type=float, when_used="json")]
+# Exchange rate (home currency per 1 unit of foreign currency): Decimal inside, JSON number at the edge.
+Rate = Annotated[Decimal, PlainSerializer(lambda v: float(v), return_type=float, when_used="json")]
+
+
+class FxTxn(BaseModel):
+    """Foreign-currency side of a converted transaction (e.g. a USD client payment credited in INR)."""
+
+    currency: str
+    gross: Money
+    fee: Money  # ≤ 0, in the foreign currency
+    net: Money
+    rate: Decimal  # home currency per unit of foreign currency, as applied
 
 
 class Txn(BaseModel):
@@ -15,7 +27,8 @@ class Txn(BaseModel):
     description: str
     merchant: str
     category: str
-    amount: Money  # signed
+    amount: Money  # signed, home currency
+    fx: FxTxn | None = None
 
 
 class ObligationIn(BaseModel):
@@ -45,6 +58,7 @@ class CashEvent(BaseModel):
     label: str
     category: str
     kind: EventKind
+    ref: str | None = None  # recurring-item key this event was projected from (lets scenarios target it)
 
 
 def add_months(d: date, months: int, day: int | None = None) -> date:

@@ -55,18 +55,21 @@ class PayPalSource:
 
     @property
     def environment(self) -> str:
-        return "sandbox" if "sandbox" in self.settings.paypal_base_url else "live"
+        return self.settings.paypal_environment
 
     def status(self) -> dict:
-        return {
-            "configured": self.configured,
-            "environment": self.environment,
-            "api_sync_available": self.configured,
-            "message": f"Connected to the PayPal {self.environment} REST API (read-only)."
-            if self.configured
-            else "Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to the backend .env to enable live API sync. "
-                 "You can import a PayPal Activity report (CSV) right now.",
-        }
+        demo = self.environment == "demo"
+        if demo:
+            message = ("PayPal demo mode: no PayPal credentials are set, so FINORA uses its built-in PayPal simulation. "
+                       "Sync, checkout, Pay Later, subscriptions and sign-in all work with synthetic data and no real "
+                       "money. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to backend/.env to use your real PayPal.")
+        elif self.configured:
+            message = f"Connected to the PayPal {self.environment} REST API (read-only sync)."
+        else:
+            message = ("Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to the backend .env to enable live API sync. "
+                       "You can import a PayPal Activity report (CSV) right now.")
+        return {"configured": self.configured, "environment": self.environment, "demo": demo,
+                "api_sync_available": self.configured, "message": message}
 
     # -- HTTP -------------------------------------------------------------------------
     def _client(self) -> httpx.Client:

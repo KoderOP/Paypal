@@ -6,7 +6,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, PageSkeleton } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
-import { fmtDate, fmtMonth, fmtShort, inr, pct, signedInr, titleCase } from '../lib/format'
+import { fmtDate, fmtMonth, fmtShort, inr, pct, recurringOrigin, signedInr, titleCase } from '../lib/format'
 import type { RecurringItem } from '../lib/types'
 
 export default function Twin() {
@@ -119,7 +119,7 @@ function RecurringTable({ items }: { items: RecurringItem[] }) {
         <tbody className="divide-y divide-slate-100">
           {items.map((r) => (
             <tr key={r.key}>
-              <td className="py-2"><p className="text-navy-800">{r.merchant}</p><p className="text-[11px] text-navy-400">{r.category} · seen {r.occurrences}×</p></td>
+              <td className="py-2"><p className="text-navy-800">{r.merchant}</p><p className="text-[11px] text-navy-400">{r.category} · {recurringOrigin(r)}</p></td>
               <td className="py-2"><Badge tone={r.kind === 'income' ? 'green' : r.kind === 'subscription' ? 'blue' : 'neutral'}>{titleCase(r.kind)}</Badge></td>
               <td className="tabular py-2 text-right font-medium text-navy-900">{inr(r.amount)}</td>
               <td className="tabular py-2 text-right text-navy-500">{r.day_of_month}</td>

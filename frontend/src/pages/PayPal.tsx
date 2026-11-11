@@ -15,7 +15,8 @@ const FLOW = [
   { icon: KeyRound, title: 'Connect', text: 'OAuth 2.0 client credentials. Secrets stay on the server; the browser never sees them.' },
   { icon: RefreshCw, title: 'Sync', text: 'Read-only Transaction Search API, fetched in 31-day windows — or an uploaded Activity report.' },
   { icon: Brain, title: 'Learn', text: 'Transactions are normalised and the twin detects income, recurring payments and habits.' },
-  { icon: FlaskConical, title: 'Simulate', text: 'A deterministic engine projects 90 days and tests decisions before you spend.' },
+  { icon: FlaskConical, title: 'Simulate', text: 'A deterministic engine projects 90 days and compares paying now, waiting or PayPal Pay Later.' },
+  { icon: ShieldCheck, title: 'Act', text: 'Pay with PayPal (Orders API) or cancel a subscription (Subscriptions API), each only after you confirm.' },
 ]
 
 export default function PayPal() {
@@ -57,15 +58,17 @@ export default function PayPal() {
               FINORA builds a financial digital twin from your PayPal transactions — then simulates purchases, salary delays and shocks so you know the impact before money moves.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{d.configured ? `REST API connected · ${d.environment}` : 'REST API not configured'}</span>
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${d.demo ? 'bg-amber-300 text-amber-950' : 'bg-white/10'}`}>
+                {d.demo ? 'Demo mode · simulated PayPal' : d.configured ? `REST API connected · ${d.environment}` : 'REST API not configured'}
+              </span>
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">{d.linked ? `${d.transaction_count} PayPal transactions in your twin` : 'No PayPal data yet'}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Read-only access</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium">Read-only sync · confirmed checkout</span>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             {d.configured && (
               <button disabled={syncing} onClick={sync} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#003087] hover:bg-sky-50 disabled:opacity-60">
-                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing…' : 'Sync now'}
+                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing…' : d.demo ? 'Sync now (demo)' : 'Sync now'}
               </button>
             )}
             <button onClick={() => navigate('/get-started?method=paypal_activity')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">
@@ -120,7 +123,7 @@ export default function PayPal() {
 
       <Card className="mt-6">
         <CardHeader title="How the PayPal integration works" />
-        <ol className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <ol className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5">
           {FLOW.map((f, i) => (
             <li key={f.title} className="relative rounded-xl bg-slate-50 p-4">
               <span className="absolute right-3 top-3 text-[11px] font-semibold text-navy-400">0{i + 1}</span>
@@ -136,16 +139,25 @@ export default function PayPal() {
         <Card>
           <CardHeader title="Trust & safety" icon={<ShieldCheck className="h-4 w-4" />} />
           <ul className="space-y-2 text-[13px] text-navy-600">
-            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Read-only scope — FINORA cannot move money.</li>
+            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Syncing is read-only. Money moves only through checkout, after two explicit confirmations: once before PayPal and again after you approve.</li>
             <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Credentials live only in the server environment.</li>
-            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Any future payment action requires your explicit confirmation.</li>
+            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Subscription cancel, suspend and re-activate each ask you to confirm first.</li>
+            <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Sign in with PayPal is optional. Every feature works without it.</li>
             <li className="flex gap-2"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-navy-400" />Duplicate-safe: re-syncs are matched on PayPal transaction ID.</li>
           </ul>
         </Card>
         <Card>
-          <CardHeader title="Connection" action={<Badge tone={d.configured ? 'green' : 'neutral'}>{d.configured ? d.environment : 'Not configured'}</Badge>} />
+          <CardHeader title="Connection" action={<Badge tone={d.demo ? 'amber' : d.configured ? 'green' : 'neutral'}>{d.demo ? 'Demo mode' : d.configured ? d.environment : 'Not configured'}</Badge>} />
           <p className="text-[13px] text-navy-600">{d.message}</p>
-          {!d.configured && (
+          {d.demo && (
+            <ul className="mt-3 space-y-1 text-[12px] text-navy-500">
+              <li>• <b>Sync now</b> imports the demo PayPal history (duplicates of the demo file are skipped).</li>
+              <li>• <b>Pay with PayPal / Pay Later</b> in the simulator opens a demo approval page, then captures for real in your twin.</li>
+              <li>• <b>Subscriptions</b> can link demo PayPal subscriptions and cancel, suspend or re-activate them.</li>
+              <li>• <b>Sign in with PayPal</b> uses a demo sign-in page with any name and email.</li>
+            </ul>
+          )}
+          {(!d.configured || d.demo) && (
             <pre className="mt-3 overflow-x-auto rounded-lg bg-navy-900 p-3 text-[11px] text-slate-200">{`# backend/.env
 PAYPAL_CLIENT_ID=...
 PAYPAL_CLIENT_SECRET=...

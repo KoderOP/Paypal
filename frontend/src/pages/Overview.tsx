@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarClock, FlaskConical, PiggyBank, Repeat, TrendingUp, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { AlertsCard } from '../components/AlertsCard'
 import { CashflowChart } from '../components/charts/CashflowChart'
 import { MonthlyBars } from '../components/charts/MonthlyBars'
 import { DataSourceBadge } from '../components/DataSourceBadge'
@@ -11,7 +12,7 @@ import { StatCard } from '../components/ui/StatCard'
 import { StatusPill } from '../components/ui/StatusPill'
 import { useApi } from '../hooks/useApi'
 import { api } from '../lib/api'
-import { daysBetween, fmtDate, fmtShort, greeting, inr, pct, signedInr } from '../lib/format'
+import { daysBetween, fmtDate, fmtShort, greeting, inr, pct, recurringOrigin, signedInr } from '../lib/format'
 import type { Dashboard, HealthIndicator } from '../lib/types'
 
 export default function Overview() {
@@ -37,10 +38,12 @@ export default function Overview() {
         actions={<DataSourceBadge source={data.data_source} />}
       />
 
+      <AlertsCard />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard emphasis label="Available balance" icon={<Wallet className="h-4 w-4" />} value={inr(kpis.current_balance)}
-          hint={daysToIncome !== null ? `Next salary in ${daysToIncome} days · ${fmtShort(kpis.next_income_date!)}` : 'No regular income detected'} />
-        <StatCard kind="derived" label="Monthly income" icon={<ArrowUpRight className="h-4 w-4 text-brand-600" />} value={inr(kpis.monthly_income)} hint="Regular, detected from salary credits" />
+          hint={daysToIncome !== null ? `Next income in ${daysToIncome} days · ${fmtShort(kpis.next_income_date!)}` : 'No regular income detected'} />
+        <StatCard kind="derived" label="Monthly income" icon={<ArrowUpRight className="h-4 w-4 text-brand-600" />} value={inr(kpis.monthly_income)} hint="Regular, detected from recurring credits" />
         <StatCard kind="derived" label="Monthly spending" icon={<ArrowDownRight className="h-4 w-4 text-navy-400" />} value={inr(kpis.monthly_expenditure)} hint="Average of last 90 days, excl. investments" />
         <StatCard kind="derived" label="Savings rate" icon={<PiggyBank className="h-4 w-4 text-navy-400" />} value={pct(kpis.savings_rate)} hint={`incl. ${inr(kpis.monthly_investments)}/mo invested`} />
         <StatCard kind="projected" label="Balance in 90 days" icon={<TrendingUp className="h-4 w-4 text-blue-600" />} value={inr(kpis.projected_balance_90)}
@@ -165,13 +168,13 @@ function SubscriptionsCard({ data }: { data: Dashboard }) {
   const subs = data.recurring.filter((r) => r.kind === 'subscription')
   return (
     <Card>
-      <CardHeader title="Recurring subscriptions" subtitle={`${subs.length} detected · ${inr(data.kpis.subscriptions_monthly)}/month`} icon={<Repeat className="h-4 w-4" />} />
+      <CardHeader title="Recurring subscriptions" subtitle={`${subs.length} active · ${inr(data.kpis.subscriptions_monthly)}/month`} icon={<Repeat className="h-4 w-4" />} />
       <ul className="divide-y divide-slate-100">
         {subs.map((s) => (
           <li key={s.key} className="flex items-center justify-between py-2.5 first:pt-0">
             <div>
               <p className="text-sm text-navy-800">{s.merchant}</p>
-              <p className="text-[11px] text-navy-400">Renews {fmtShort(s.next_date)} · seen {s.occurrences}×</p>
+              <p className="text-[11px] text-navy-400">Renews {fmtShort(s.next_date)} · {recurringOrigin(s)}</p>
             </div>
             <span className="tabular text-sm font-medium text-navy-900">{inr(s.amount)}</span>
           </li>

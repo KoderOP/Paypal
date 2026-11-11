@@ -78,7 +78,9 @@ export default function GetStarted() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-base font-semibold text-navy-900">PayPal</p>
                   <Badge tone="blue">Recommended</Badge>
-                  <Badge tone={apiReady ? 'green' : 'neutral'}>{apiReady ? `API connected · ${paypal.data?.environment}` : 'Activity report upload'}</Badge>
+                  <Badge tone={paypal.data?.demo ? 'amber' : apiReady ? 'green' : 'neutral'}>
+                    {paypal.data?.demo ? 'Demo mode · simulated API' : apiReady ? `API connected · ${paypal.data?.environment}` : 'Activity report upload'}
+                  </Badge>
                 </div>
                 <p className="mt-1 text-sm text-navy-500">Sync your PayPal transactions through the read-only Transaction Search API, or upload a PayPal Activity report. PayPal is FINORA's primary data source.</p>
               </div>
@@ -114,9 +116,12 @@ export default function GetStarted() {
                 </label>
                 {syncError && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-xs text-red-700">{syncError.message}</p>}
                 <button disabled={syncing} onClick={syncPayPal} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#003087] py-3 text-sm font-semibold text-white hover:bg-[#002366] disabled:opacity-50">
-                  <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing with PayPal…' : 'Sync & analyse'}
+                  <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing with PayPal…' : paypal.data?.demo ? 'Sync demo PayPal & analyse' : 'Sync & analyse'}
                 </button>
-                <p className="mt-2 text-[11px] text-navy-400">Read-only access. FINORA never moves money without your explicit confirmation.</p>
+                <p className="mt-2 text-[11px] text-navy-400">
+                  {paypal.data?.demo ? 'Demo mode: imports synthetic PayPal history through the simulated Transaction Search API. ' : ''}
+                  Read-only access. FINORA never moves money without your explicit confirmation.
+                </p>
               </>
             ) : (
               <div className="rounded-xl bg-slate-50 p-4 text-sm text-navy-600">

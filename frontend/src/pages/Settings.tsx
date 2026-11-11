@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/Badge'
 import { Card, CardHeader } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, PageSkeleton } from '../components/ui/States'
+import { useAuth } from '../context/Auth'
 import { useDataStatus } from '../context/DataStatus'
 import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
@@ -15,6 +16,7 @@ import { inr } from '../lib/format'
 export default function Settings() {
   const s = useApi(api.settings)
   const { refresh } = useDataStatus()
+  const { auth } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [buffer, setBuffer] = useState('')
@@ -94,14 +96,31 @@ export default function Settings() {
         </Card>
 
         <Card>
-          <CardHeader title="PayPal" icon={<PayPalMark size="sm" />} action={<Badge tone={d.paypal.configured ? 'blue' : 'neutral'}>{d.paypal.configured ? `API · ${d.paypal.environment}` : 'Upload only'}</Badge>} />
+          <CardHeader title="PayPal" icon={<PayPalMark size="sm" />} action={<Badge tone={d.paypal.demo ? 'amber' : d.paypal.configured ? 'blue' : 'neutral'}>{d.paypal.demo ? 'Demo mode' : d.paypal.configured ? `API · ${d.paypal.environment}` : 'Upload only'}</Badge>} />
           <p className="text-sm text-navy-600">{d.paypal.message}</p>
           <Link to="/paypal" className="mt-3 inline-block text-sm font-semibold text-[#003087] hover:underline">Open PayPal hub →</Link>
         </Card>
 
         <Card>
           <CardHeader title="AI assistant" icon={<Bot className="h-4 w-4" />} action={<Badge tone={d.ai_configured ? 'green' : 'neutral'}>{d.ai_configured ? 'API key set' : 'Not configured'}</Badge>} />
-          <p className="text-sm text-navy-600">Set <code className="rounded bg-slate-100 px-1">OPENAI_API_KEY</code> and <code className="rounded bg-slate-100 px-1">OPENAI_MODEL</code> on the server. The assistant ships in the next milestone.</p>
+          <p className="text-sm text-navy-600">
+            {d.ai_configured
+              ? 'The assistant uses the AI model to choose calculations and phrase answers. Every rupee figure is checked against the engine.'
+              : 'Without a key, the assistant uses a built-in parser for the core what-if questions. Set '}
+            {!d.ai_configured && <><code className="rounded bg-slate-100 px-1">OPENAI_API_KEY</code> on the server for free-form chat.</>}
+          </p>
+          <Link to="/assistant" className="mt-3 inline-block text-sm font-semibold text-navy-900 hover:underline">Open assistant →</Link>
+        </Card>
+
+        <Card>
+          <CardHeader title="Sign in with PayPal" icon={<PayPalMark size="sm" />}
+            action={<Badge tone={auth?.authenticated ? 'green' : 'neutral'}>{auth?.authenticated ? 'Signed in' : 'Optional'}</Badge>} />
+          <p className="text-sm text-navy-600">
+            {auth?.authenticated
+              ? `Signed in as ${auth.identity?.name || auth.identity?.email}.`
+              : 'Optional, and open to any PayPal account. Every feature works without signing in.'}
+          </p>
+          <Link to="/signin" className="mt-3 inline-block text-sm font-semibold text-[#003087] hover:underline">{auth?.authenticated ? 'Manage sign-in →' : 'Sign in →'}</Link>
         </Card>
       </div>
     </>

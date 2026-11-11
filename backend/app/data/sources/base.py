@@ -11,13 +11,26 @@ from typing import Protocol
 
 
 @dataclass(frozen=True)
+class FxInfo:
+    """Original-currency details for a transaction converted into the home currency (e.g. USD → INR)."""
+
+    currency: str
+    gross: Decimal  # foreign amount before PayPal's fee
+    fee: Decimal  # PayPal fee in the foreign currency (≤ 0)
+    net: Decimal  # gross + fee: what was converted
+    rate: Decimal  # home currency per 1 unit of foreign currency, as actually applied
+    rate_source: str  # paypal_conversion | nearest_conversion
+
+
+@dataclass(frozen=True)
 class NormalizedTransaction:
     external_id: str
     posted_on: date
     description: str
     merchant: str
     category: str
-    amount: Decimal  # signed: + credit, - debit
+    amount: Decimal  # signed, in the home currency: + credit, - debit
+    fx: FxInfo | None = None
 
 
 class TransactionSource(Protocol):
