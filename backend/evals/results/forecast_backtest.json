@@ -1,6 +1,6 @@
 {
   "benchmark": "forecast_backtest",
-  "commit": "47399ec",
+  "commit": "8db3212",
   "python": "3.14.2",
   "eval_today": "2026-11-03",
   "horizon_days": 30,
