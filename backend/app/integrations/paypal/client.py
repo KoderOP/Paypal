@@ -93,5 +93,16 @@ def new_request_id() -> str:
     return str(uuid.uuid4())
 
 
+def paypal_runtime() -> tuple[Settings, httpx.BaseTransport | None]:
+    """Effective PayPal settings + transport: real PayPal when credentials exist, otherwise the built-in demo."""
+    s = get_settings()
+    if s.paypal_configured or not s.paypal_demo_mode:
+        return s, None
+    from app.integrations.paypal import demo  # late import: demo uses the database layer
+
+    return demo.demo_settings(s), demo.transport()
+
+
 def get_paypal_client() -> PayPalClient:
-    return PayPalClient(get_settings())
+    settings, transport = paypal_runtime()
+    return PayPalClient(settings, transport)

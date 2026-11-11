@@ -38,6 +38,15 @@ transaction files are also supported.
   and each payment keeps its original currency, fee and applied rate. The Cross-border page shows income by client,
   PayPal fees, the average rate PayPal applied, conversion cost against a rate you enter, *"what if USD/INR drops
   3%?"* and *"what if this client pays late?"*. Withdrawals to a bank are treated as transfers, not spending.
+- **Works without PayPal credentials.** With an empty `.env`, FINORA switches to its built-in **PayPal demo
+  mode**: an in-process stand-in for the PayPal REST API, used through exactly the same client code. Sync, Pay with
+  PayPal / Pay Later checkout, subscription link/cancel/suspend, and Sign in with PayPal all work end to end. Buyer
+  steps happen on FINORA's own pages, which carry a "PayPal demo mode" banner. No real money moves and PayPal is never
+  contacted. Add real credentials and the same features use your real PayPal.
+- **Stress testing:** a shock library (job loss for 1 or 3 months, a 30% pay cut, a medical emergency, living costs
+  +30%, income 30 days late, and a currency drop for foreign income), plus a seeded Monte Carlo of spending based on
+  your own month-to-month and day-to-day variability. It shows likely balance ranges, the chance of dipping below the
+  buffer, your emergency runway, and a resilience label with explicit thresholds.
 - **Proactive alerts** on the dashboard, for example: below-buffer or overdraft ahead, a big bill due just before
   income, a Pay Later instalment due tomorrow, income that's late, or a subscription price increase. Each can be
   dismissed for that occurrence.
@@ -79,7 +88,7 @@ docker compose up --build      # db (Postgres 16) + backend + frontend
 ### Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q    # 105 tests: engine, planning, parsers, PayPal APIs (mocked), assistant, API (clock pinned to 3 Nov 2026)
+cd backend && .venv/bin/python -m pytest -q    # 116 tests: engine, planning, parsers, PayPal APIs (mocked + demo mode), assistant, stress, API (clock pinned to 3 Nov 2026)
 cd frontend && npx tsc -b && npm run build      # type-check + production build
 ```
 
@@ -209,6 +218,8 @@ All endpoints are prefixed with `/api`. Interactive docs are at `http://localhos
 | GET / POST / DELETE | `/simulations/saved` · `/simulations/saved/{id}` | Saved scenarios for comparison |
 | GET | `/alerts` · POST `/alerts/dismiss` `{id}` · POST `/alerts/restore` | Proactive alerts |
 | GET | `/crossborder` · PUT `/crossborder/reference-rate` `{currency, rate}` | Foreign income, fees, applied rates, FX sensitivity, late-client risk |
+| GET | `/stress` | Shock library, Monte Carlo balance bands, runway, chance under buffer, resilience |
+| GET / POST | `/paypal-demo/status` · `/paypal-demo/orders/{id}` (`/approve`, `/cancel`) · `/paypal-demo/authorize` | Buyer-side steps of the built-in PayPal demo (404 when real credentials are set) |
 | POST | `/checkout/orders` | `{amount, label, option_id, acknowledged: true}` → PayPal order + approval link (simulation re-run server-side and snapshotted) |
 | GET | `/checkout/return` · `/checkout/cancel` | PayPal redirect targets → order `approved` / `cancelled` |
 | POST | `/checkout/orders/{id}/capture` | `{confirm: true}` → capture. Records a PayPal transaction (pay in full) or one obligation per instalment (Pay Later) |
@@ -279,7 +290,10 @@ FINORA recommends **waiting 12 days for the salary**.
   withdrawals are treated as transfers. A bank-side "PayPal" credit is only recognised as a transfer if its
   narration matches the transfer keywords.
 - **The assistant's rule-based mode** understands the core what-if questions, not free-form chat. Add
-  `OPENAI_API_KEY` for that. The Stress Testing page is still a placeholder.
+  `OPENAI_API_KEY` for that.
+- **PayPal demo mode is a simulation.** It always approves Pay Later and lets FINORA manage every demo subscription.
+  Real PayPal can decline credit and only lets the merchant's app manage a subscription. Treat demo results as a
+  walkthrough of the flow, not evidence of PayPal's behaviour.
 - Forecasting only detects monthly recurrence (weekly or annual items count as variable spend). It
   produces a single deterministic path with no confidence bands, and irregular income is excluded.
 - `as_of` is always today. A file whose history ended long ago will detect few active recurring items.

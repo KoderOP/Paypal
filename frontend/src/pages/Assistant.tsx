@@ -23,6 +23,8 @@ const SUGGESTIONS = [
   'What if I add a ₹499/month gym membership?',
   'What if USD/INR drops 3%?',
   'How much am I losing to PayPal fees?',
+  'What if I lose my job for 2 months?',
+  'How resilient are my finances?',
   'What if my income is delayed by 15 days?',
   'What if I increase my monthly savings by 10%?',
   'When can I safely buy a ₹1.2 lakh vacation?',
@@ -171,6 +173,12 @@ function ToolCardView({ call, onChanged }: { call: ToolCall; onChanged: () => vo
     case 'scenario': return <ScenarioView card={c} changes={(call.arguments.changes as ScenarioChange[] | undefined) ?? []} />
     case 'snapshot': return <SnapshotView card={c} />
     case 'cross_border': return <CrossBorderView card={c} />
+    case 'stress': return (
+      <Card>
+        <CardHeader title={`Resilience: ${c.resilience}`} action={<Link to="/stress" className="text-[13px] font-semibold text-navy-900 hover:underline">Open stress test →</Link>} />
+        <ul className="space-y-1 text-[13px] text-navy-700">{c.summary.map((l, i) => <li key={i}>• {l}</li>)}</ul>
+      </Card>
+    )
   }
 }
 
@@ -203,7 +211,7 @@ function ScenarioView({ card, changes }: { card: ScenarioCard; changes: Scenario
         <div className="flex items-center gap-2">
           <ProjectedTag />
           {changes.length > 0 && (saved === 'saved'
-            ? <Link to="/compare" className="text-[12px] font-semibold text-brand-700 hover:underline">Saved · Compare →</Link>
+            ? <Link to="/simulator?view=compare" className="text-[12px] font-semibold text-brand-700 hover:underline">Saved · Compare →</Link>
             : <button onClick={() => void save()} disabled={saved === 'saving'} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-medium text-navy-700 hover:bg-slate-50 disabled:opacity-50">
                 <Bookmark className="h-3.5 w-3.5" /> {saved === 'error' ? 'Retry save' : 'Save to compare'}
               </button>)}

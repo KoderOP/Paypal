@@ -307,10 +307,27 @@ function IconBtn({ label, onClick, children }: { label: string; onClick: () => v
 function LinkForm({ detected, apiAvailable, busy, onLink }: { detected: DetectedSubscription[]; apiAvailable: boolean; busy: string | null; onLink: (id: string, key: string) => void }) {
   const [subId, setSubId] = useState('')
   const [key, setKey] = useState('')
+  const demo = useApi(api.paypalDemo)
+  const linkedIds = new Set(detected.flatMap((s) => (s.linked ? [s.linked.paypal_subscription_id] : [])))
+  const demoSubs = (demo.data?.demo ? demo.data.subscriptions : []).filter((s) => !linkedIds.has(s.id))
   const valid = /^[A-Za-z0-9-]{3,64}$/.test(subId.trim())
   return (
     <Card>
-      <CardHeader title="Link a PayPal subscription" icon={<PayPalMark size="sm" />} action={<Badge tone="blue">Subscriptions API</Badge>} />
+      <CardHeader title="Link a PayPal subscription" icon={<PayPalMark size="sm" />}
+        action={<Badge tone={demo.data?.demo ? 'amber' : 'blue'}>{demo.data?.demo ? 'Demo Subscriptions API' : 'Subscriptions API'}</Badge>} />
+      {demoSubs.length > 0 && (
+        <div className="mb-3 rounded-xl bg-amber-50 p-3 text-[12px] text-amber-900">
+          <p className="font-medium">Demo mode: pick a demo PayPal subscription</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {demoSubs.map((s) => (
+              <button key={s.id} onClick={() => setSubId(s.id)} title={s.id}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${subId === s.id ? 'border-amber-700 bg-amber-200' : 'border-amber-300 bg-white hover:bg-amber-100'}`}>
+                {s.name} · {inr(s.amount)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {!apiAvailable ? (
         <p className="text-[13px] text-navy-500">Needs PayPal API credentials on the server (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET). Marking subscriptions cancelled works without them.</p>
       ) : (

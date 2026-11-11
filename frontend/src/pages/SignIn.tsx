@@ -45,9 +45,14 @@ export default function SignIn() {
               <LogOut className="h-4 w-4" /> Sign out
             </button>
           ) : auth.login_available ? (
-            <a href={api.loginUrl} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffc439] px-4 py-3 text-[15px] font-semibold text-[#001c64] shadow-sm transition hover:bg-[#f2b72e]">
-              <LockKeyhole className="h-4 w-4" /> Log in with PayPal
-            </a>
+            <>
+              <a href={api.loginUrl} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffc439] px-4 py-3 text-[15px] font-semibold text-[#001c64] shadow-sm transition hover:bg-[#f2b72e]">
+                <LockKeyhole className="h-4 w-4" /> {auth.demo ? 'Log in with PayPal (demo)' : 'Log in with PayPal'}
+              </a>
+              {auth.demo && (
+                <p className="mt-2 text-center text-xs text-sky-200">Demo mode: you’ll sign in on FINORA’s simulated sign-in page with any name and email.</p>
+              )}
+            </>
           ) : (
             <p className="mt-6 rounded-xl bg-white/10 p-3 text-sm">{ERRORS.not_configured}</p>
           )}

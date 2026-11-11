@@ -51,7 +51,8 @@ def me(request: Request):
     ident = session_identity(request)
     return {
         "authenticated": ident is not None,
-        "login_available": s.paypal_configured,
+        "login_available": s.paypal_available,
+        "demo": s.paypal_environment == "demo",
         "environment": s.paypal_environment,
         "identity": ident,
         "callback_url": callback_url(s),
@@ -62,7 +63,7 @@ def me(request: Request):
 @router.get("/paypal/login")
 def login():
     s = get_settings()
-    if not s.paypal_configured:
+    if not s.paypal_available:
         return _frontend("/signin", error="not_configured")
     state = new_state()
     res = RedirectResponse(authorize_url(s, state), status_code=303)

@@ -73,7 +73,7 @@ def start_checkout(body: CheckoutCreate, db: Session = Depends(get_db), pp: PayP
                           amount=cmp.amount, currency=(s.paypal_checkout_currency or user.currency).upper(),
                           status="created", request_id=new_request_id(), snapshot=snapshot)
     db.add(order)
-    db.flush()
+    db.commit()  # record the intent before calling PayPal; also releases SQLite's write lock for the call
     try:
         res = create_order(pp, amount=order.amount, currency=order.currency, label=order.label,
                            reference=f"finora-{order.id}", return_url=f"{s.public_api_url}/checkout/return",

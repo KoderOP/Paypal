@@ -1,5 +1,5 @@
 import { Bookmark, Columns3, Loader2, Plus, ShieldCheck, Trash2, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ChartLegendItem } from '../components/charts/CashflowChart'
 import { TooltipRow, TooltipShell, tooltipDate } from '../components/charts/ChartTooltip'
@@ -18,20 +18,22 @@ const SLOT_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'v
 const MAX = 4
 
 type ChangeType = 'purchase' | 'cancel_subscriptions' | 'income_delay' | 'increase_savings' | 'expense_increase'
-  | 'unexpected_payment' | 'add_subscription' | 'fx_change'
+  | 'unexpected_payment' | 'add_subscription' | 'fx_change' | 'income_loss'
 
 const TYPES: { value: ChangeType; label: string }[] = [
   { value: 'purchase', label: 'Make a purchase' },
   { value: 'add_subscription', label: 'Start a subscription' },
   { value: 'cancel_subscriptions', label: 'Cancel subscriptions' },
   { value: 'income_delay', label: 'Income / client pays late' },
+  { value: 'income_loss', label: 'Job loss or pay cut' },
   { value: 'increase_savings', label: 'Increase savings' },
   { value: 'expense_increase', label: 'Spending changes' },
   { value: 'unexpected_payment', label: 'Unexpected payment' },
   { value: 'fx_change', label: 'Exchange rate moves' },
 ]
 
-export default function Compare() {
+/** Side-by-side comparison. Rendered inside the What-if Simulator tab, which passes the shared header. */
+export default function Compare({ header }: { header?: ReactNode } = {}) {
   const dash = useApi(api.dashboard)
   const saved = useApi(api.savedScenarios)
   const [slots, setSlots] = useState<NamedScenario[]>([])
@@ -92,8 +94,10 @@ export default function Compare() {
 
   return (
     <>
-      <PageHeader eyebrow="Compare scenarios" title="Which decision leaves you better off?"
-        description="Put up to four what-ifs side by side, on the same 90-day baseline: cancel subscriptions vs. delay the laptop vs. both. Save the ones you want to come back to." />
+      {header ?? (
+        <PageHeader eyebrow="Compare scenarios" title="Which decision leaves you better off?"
+          description="Put up to four what-ifs side by side, on the same 90-day baseline: cancel subscriptions vs. delay the laptop vs. both. Save the ones you want to come back to." />
+      )}
       {msg && <p role="status" className="mb-4 rounded-xl bg-brand-50 p-3 text-sm text-brand-700">{msg}</p>}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
@@ -283,6 +287,10 @@ function ChangeForm({ onAdd, onCancel }: { onAdd: (c: ScenarioChange) => void; o
       case 'increase_savings': return num(percent) > 0 ? { type, percent: num(percent) } : null
       case 'expense_increase': return Number.isFinite(num(percent)) && num(percent) !== 0 ? { type, percent: num(percent) } : null
       case 'fx_change': return Number.isFinite(num(percent)) && num(percent) !== 0 ? { type, percent: num(percent), currency } : null
+      case 'income_loss': {
+        const months = Math.round(num(count)), cut = num(percent)
+        return months >= 1 && months <= 12 && cut > 0 && cut <= 100 ? { type, months, percent: cut } : null
+      }
     }
   }
   const change = build()
@@ -290,7 +298,12 @@ function ChangeForm({ onAdd, onCancel }: { onAdd: (c: ScenarioChange) => void; o
   return (
     <div className="mt-3 rounded-xl bg-slate-50 p-3">
       <label className="block text-xs font-medium text-navy-700">Change
-        <select value={type} onChange={(e) => { const t = e.target.value as ChangeType; setType(t); setPercent(t === 'fx_change' ? '-3' : '10'); setAmount(t === 'add_subscription' ? '499' : t === 'unexpected_payment' ? '30000' : '75000') }} className={field}>
+        <select value={type} onChange={(e) => {
+          const t = e.target.value as ChangeType; setType(t)
+          setPercent(t === 'fx_change' ? '-3' : t === 'income_loss' ? '100' : '10')
+          setCount(t === 'income_loss' ? '1' : '3')
+          setAmount(t === 'add_subscription' ? '499' : t === 'unexpected_payment' ? '30000' : '75000')
+        }} className={field}>
           {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </label>
@@ -301,6 +314,10 @@ function ChangeForm({ onAdd, onCancel }: { onAdd: (c: ScenarioChange) => void; o
           <label className="col-span-2 text-xs font-medium text-navy-700">Label<input value={label} maxLength={80} placeholder={type === 'add_subscription' ? 'Gym membership' : 'Laptop'} onChange={(e) => setLabel(e.target.value)} className={field} /></label>
         </>}
         {type === 'cancel_subscriptions' && <label className="text-xs font-medium text-navy-700">How many (most expensive first)<input inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, ''))} className={field} /></label>}
+        {type === 'income_loss' && <>
+          <label className="text-xs font-medium text-navy-700">For how many months<input inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, ''))} className={field} /></label>
+          <label className="text-xs font-medium text-navy-700">Income lost (%)<input inputMode="decimal" value={percent} onChange={(e) => setPercent(e.target.value.replace(/[^\d.]/g, ''))} className={field} /></label>
+        </>}
         {type === 'income_delay' && <>
           <label className="text-xs font-medium text-navy-700">Days late<input inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ''))} className={field} /></label>
           <label className="text-xs font-medium text-navy-700">Only this payer (optional)<input value={merchant} placeholder="Client name" onChange={(e) => setMerchant(e.target.value)} className={field} /></label>

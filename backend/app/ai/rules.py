@@ -121,7 +121,15 @@ def plan_calls(question: str, subscription_names: list[str], payer_names: list[s
             count = 1 if re.search(r"\ba subscription\b", t) else 3
         changes.append({"type": "cancel_subscriptions", "names": names, "count": count})
 
-    if (payers or re.search(r"(salary|income|pay ?check|payday|wage|client|payment from)", t)) and \
+    if re.search(r"(lose|lost|losing) (my )?(job|income|salary|client)|job loss|laid off|layoff|fired|unemploy|"
+                 r"pay ?cut|salary cut|income (drops|falls|cut)", t):
+        months = _days(t)
+        cut = re.search(r"(\d+(?:\.\d+)?)\s*(?:%|percent)", t) if re.search(r"cut|drop|fall|less", t) else None
+        change = {"type": "income_loss", "months": max(1, min(12, round((months or 30) / 30)))}
+        if cut:
+            change["percent"] = float(cut.group(1))
+        changes.append(change)
+    elif (payers or re.search(r"(salary|income|pay ?check|payday|wage|client|payment from)", t)) and \
             re.search(r"(delay|late|postpone|held up|pushed)", t):
         change = {"type": "income_delay", "days": _days(t) or 15, "all_future": "every" in t or "all" in t}
         if payers:
@@ -130,7 +138,9 @@ def plan_calls(question: str, subscription_names: list[str], payer_names: list[s
 
     pct = _percent(t)
     fx = _fx_change(t, pct) if pct else None
-    if fx:
+    if any(c["type"] == "income_loss" for c in changes):
+        pass  # the percentage was a pay cut, already handled
+    elif fx:
         changes.append(fx)
     elif pct and re.search(r"sav(e|ing|ings)|sip|invest", t):
         changes.append({"type": "increase_savings", "percent": float(pct)})
@@ -163,6 +173,9 @@ def plan_calls(question: str, subscription_names: list[str], payer_names: list[s
                                                                      {"amount": float(amount), "label": _label(t)})]
     if amount and (buying or re.search(r"(split|instal|emi|pay later|pay in 4|wait)", t)):
         return [("compare_payment_options", {"amount": float(amount), "label": _label(t)})]
+    if re.search(r"(stress|resilien|emergency fund|runway|worst case|how long (can|could|would) (i|my money)|"
+                 r"how safe|how secure|survive)", t):
+        return [("run_stress_test", {})]
     if re.search(r"(withdraw|paypal fees?|\bfees?\b|conversion|exchange rate|cross.border|foreign|forex|"
                  r"usd income|dollar income|international|clients?)", t):
         return [("get_cross_border_summary", {})]
@@ -202,7 +215,7 @@ def describe_changes(changes: list[dict]) -> str:
     names = {"purchase": "the purchase", "cancel_subscriptions": "cancelled subscriptions",
              "income_delay": "the income delay", "increase_savings": "higher savings", "expense_increase": "the spending change",
              "unexpected_payment": "the unexpected payment", "add_subscription": "the new subscription",
-             "fx_change": "the exchange-rate move"}
+             "fx_change": "the exchange-rate move", "income_loss": "the income loss"}
     parts = [c.get("label") if c["type"] in ("purchase", "add_subscription") and c.get("label") else names.get(c["type"], c["type"])
              for c in changes]
     return ", ".join(dict.fromkeys(p for p in parts if p))

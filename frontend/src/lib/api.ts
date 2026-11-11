@@ -1,6 +1,6 @@
 import type {
-  AddedSubscription, Affordability, AlertsView, AssistantStatus, ChatContext, CrossBorder, NamedScenario, SavedScenario,
-  ScenarioComparison, SubscriptionInput, AuthState, ChatResponse, ChatTurn, CheckoutOrder, Dashboard, DemoFile, FileFormat,
+  AddedSubscription, Affordability, AlertsView, AssistantStatus, ChatContext, CrossBorder, NamedScenario,
+  PayPalDemoOrder, PayPalDemoStatus, SavedScenario, ScenarioComparison, StressReport, SubscriptionInput, AuthState, ChatResponse, ChatTurn, CheckoutOrder, Dashboard, DemoFile, FileFormat,
   ImportResult, LinkedSubscription, Obligation, ObligationCreate, PaymentComparison, PayPalOverview, PurchaseRequest,
   PurchaseSimulation, ScenarioChange, ScenarioInfo, ScenarioResult, SettingsData, StatusData, SubscriptionsOverview,
   TransactionPage, TwinData,
@@ -139,6 +139,18 @@ export const api = {
   alerts: () => request<AlertsView>('/alerts'),
   dismissAlert: (id: string) => request<AlertsView>('/alerts/dismiss', json('POST', { id })),
   restoreAlerts: () => request<AlertsView>('/alerts/restore', json('POST', {})),
+
+  // Stress testing
+  stress: () => request<StressReport>('/stress'),
+
+  // Built-in PayPal demo (only active without PayPal credentials)
+  paypalDemo: () => request<PayPalDemoStatus>('/paypal-demo/status'),
+  demoOrder: (id: string) => request<PayPalDemoOrder>(`/paypal-demo/orders/${encodeURIComponent(id)}`),
+  demoApprove: (id: string, funding: 'paypal' | 'paylater') =>
+    request<{ redirect: string }>(`/paypal-demo/orders/${encodeURIComponent(id)}/approve`, json('POST', { funding })),
+  demoCancel: (id: string) => request<{ redirect: string }>(`/paypal-demo/orders/${encodeURIComponent(id)}/cancel`, json('POST', {})),
+  demoAuthorize: (body: { state: string; redirect_uri: string; name: string; email: string }) =>
+    request<{ redirect: string }>('/paypal-demo/authorize', json('POST', body)),
 
   // Cross-border
   crossBorder: () => request<CrossBorder>('/crossborder'),

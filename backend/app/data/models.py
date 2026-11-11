@@ -86,6 +86,19 @@ class FxDetail(Base):
     rate_source: Mapped[str] = mapped_column(String(30))
 
 
+class DemoPayPalObject(Base):
+    """State of FINORA's built-in PayPal demo (orders, sign-in codes, subscriptions). Only used without credentials."""
+
+    __tablename__ = "demo_paypal_objects"
+    __table_args__ = (UniqueConstraint("kind", "key", name="uq_demo_pp_kind_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(30))  # order | order_request | auth_code | subscription
+    key: Mapped[str] = mapped_column(String(120))
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class SavedScenario(Base):
     """A named what-if (list of scenario changes) saved for side-by-side comparison."""
 

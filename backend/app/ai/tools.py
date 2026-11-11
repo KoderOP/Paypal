@@ -17,6 +17,7 @@ from app.data.models import User
 from app.engine.forecast import forecast_baseline
 from app.engine.scenarios import Change
 from app.engine.simulation import fmt_date, inr
+from app.engine.stress import stress_test
 from app.services import planning
 from app.services import repository as repo
 
@@ -65,7 +66,8 @@ TOOL_SPECS: list[dict[str, Any]] = [
                 "type": "object", "required": ["type"], "properties": {
                     "type": {"type": "string", "enum": ["purchase", "cancel_subscriptions", "income_delay",
                                                         "increase_savings", "expense_increase", "unexpected_payment",
-                                                        "add_subscription", "fx_change"]},
+                                                        "add_subscription", "fx_change", "income_loss"]},
+                    "months": {"type": "integer", "description": "income_loss: months without (or with less) income"},
                     "currency": {"type": "string", "description": "fx_change: foreign currency, e.g. USD"},
                     "merchant": {"type": "string", "description": "income_delay: only this payer/client is late"},
                     "amount": {"type": "number",
@@ -86,6 +88,11 @@ TOOL_SPECS: list[dict[str, Any]] = [
         "description": "For freelancers paid from abroad via PayPal: foreign income by client, PayPal fees, the rates "
                        "PayPal applied, conversion cost vs a reference rate, FX sensitivity and late-client risk.",
         "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
+    {"type": "function", "function": {
+        "name": "run_stress_test",
+        "description": "How resilient are the user's finances? Runs a shock library (job loss, pay cut, medical bill, "
+                       "costs +30%, late income, currency drop) and a spending Monte Carlo; returns runway and risk.",
+        "parameters": {"type": "object", "properties": {}, "additionalProperties": False}}},
 ]
 
 
@@ -101,6 +108,8 @@ def run_tool(name: str, args: dict, db: Session, user: User) -> ToolOutcome:
             return _scenario(db, user, args)
         if name == "get_cross_border_summary":
             return _cross_border(db, user)
+        if name == "run_stress_test":
+            return _stress(db, user)
         return ToolOutcome(name, args, False, {"error": f"Unknown tool {name}"})
     except ValidationError as exc:
         return ToolOutcome(name, args, False, {"error": "Invalid arguments", "details": [e["msg"] for e in exc.errors()][:5]})
@@ -167,6 +176,20 @@ def _affordability(db: Session, user: User, args: dict) -> ToolOutcome:
     card = {"kind": "affordability", **r.model_dump(mode="json")}
     return ToolOutcome("find_affordability", {k: v for k, v in {"amount": _f(amount), "search_days": days}.items() if v},
                        True, summary, card, r.explanation)
+
+
+def _stress(db: Session, user: User) -> ToolOutcome:
+    a = repo.assumptions_for(user)
+    r = stress_test(repo.build_user_profile(db, user, a), repo.load_transactions(db, user), a)
+    summary = {
+        "resilience": r.resilience, "runway_months": float(r.runway_months), "monthly_burn": _f(r.monthly_burn),
+        "chance_below_buffer": float(r.chance_below_buffer), "chance_below_zero": float(r.chance_below_zero),
+        "shocks": [{"name": s.name, "min_balance": _f(s.min_balance), "min_balance_date": s.min_balance_date.isoformat(),
+                    "solvent": s.solvent, "above_buffer": s.above_buffer} for s in r.shocks],
+        "safety_buffer": _f(a.safety_buffer),
+    }
+    return ToolOutcome("run_stress_test", {}, True, summary, {"kind": "stress", "resilience": r.resilience,
+                                                             "summary": r.summary}, r.summary)
 
 
 def _cross_border(db: Session, user: User) -> ToolOutcome:

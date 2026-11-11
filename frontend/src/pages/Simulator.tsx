@@ -32,7 +32,8 @@ function useDebounced<T>(value: T, ms: number): T {
   return v
 }
 
-export default function Simulator() {
+/** Purchase simulator. Rendered inside the What-if Simulator tab, which passes the shared header. */
+export default function Simulator({ header }: { header?: ReactNode } = {}) {
   const [label, setLabel] = useState('Laptop purchase')
   const [amountText, setAmountText] = useState('75000')
   const [date, setDate] = useState<string | null>(null) // null = today
@@ -93,11 +94,13 @@ export default function Simulator() {
 
   return (
     <>
-      <PageHeader
-        eyebrow="What-if Simulator"
-        title="Simulate a decision before you make it"
-        description="Your financial twin replays your income, bills, obligations and day-to-day spending day by day — with and without the purchase — and tests alternative dates to find the safest moment to buy."
-      />
+      {header ?? (
+        <PageHeader
+          eyebrow="What-if Simulator"
+          title="Simulate a decision before you make it"
+          description="Your financial twin replays your income, bills, obligations and day-to-day spending day by day — with and without the purchase — and tests alternative dates to find the safest moment to buy."
+        />
+      )}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
           <Card>
@@ -410,7 +413,8 @@ function ScenarioLibrary({ items }: { items: { type: string; title: string; desc
   if (!more.length) return null
   return (
     <Card>
-      <CardHeader title="More what-ifs" subtitle="Run in the AI assistant, on the same engine" />
+      <CardHeader title="More what-ifs" subtitle="Ask the AI assistant, or compare several side by side"
+        action={<Link to="/simulator?view=compare" className="text-xs font-semibold text-navy-900 hover:underline">Compare →</Link>} />
       <ul className="space-y-1">
         {more.map((s) => (
           <li key={s.type}>

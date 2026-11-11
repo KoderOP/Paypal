@@ -70,7 +70,7 @@ export default function CrossBorder() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
             <Link to={`/assistant?q=${encodeURIComponent(`What if ${cur}/INR drops 3%?`)}`} className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-navy-800 hover:bg-slate-50">Ask the assistant</Link>
-            <Link to="/compare" className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-navy-800 hover:bg-slate-50">Compare scenarios</Link>
+            <Link to="/simulator?view=compare" className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-navy-800 hover:bg-slate-50">Compare scenarios</Link>
           </div>
         </Card>
 

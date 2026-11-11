@@ -4,8 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
-    alerts, assistant, auth, checkout, crossborder, dashboard, data, paypal, settings, simulations, subscriptions,
-    transactions,
+    alerts, assistant, auth, checkout, crossborder, dashboard, data, paypal, paypal_demo, settings, simulations,
+    stress, subscriptions, transactions,
 )
 from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
@@ -27,7 +27,8 @@ app.add_middleware(CORSMiddleware, allow_origins=s.cors_origin_list, allow_metho
 
 # Sign in with PayPal is optional: no route requires a session, so every feature works signed out.
 for r in (dashboard.router, transactions.router, simulations.router, settings.router, data.router, paypal.router,
-          auth.router, checkout.router, subscriptions.router, assistant.router, alerts.router, crossborder.router):
+          auth.router, checkout.router, subscriptions.router, assistant.router, alerts.router, crossborder.router,
+          paypal_demo.router, stress.router):
     app.include_router(r, prefix="/api")
 
 

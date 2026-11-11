@@ -14,6 +14,7 @@ export function describeChange(c: ScenarioChange): string {
     case 'expense_increase': return `Spending ${signed(n('percent'))}`
     case 'unexpected_payment': return `${c.label ?? 'Unexpected payment'} ${inr(n('amount'))}`
     case 'fx_change': return `${c.currency ?? 'USD'}/INR ${signed(n('percent'))}`
+    case 'income_loss': return `${c.percent && n('percent') < 100 ? `Income −${n('percent')}%` : 'No income'} for ${n('months') || 1} month(s)`
     default: return c.type
   }
 }

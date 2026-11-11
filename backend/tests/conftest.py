@@ -23,3 +23,11 @@ def client():
     repository.today = lambda: TODAY
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def demo_off(monkeypatch):
+    """No PayPal credentials *and* the built-in PayPal demo disabled (PAYPAL_DEMO_MODE=false)."""
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "paypal_demo_mode", False)

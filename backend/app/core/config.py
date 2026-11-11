@@ -5,6 +5,9 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+DEMO_PAYPAL_HOST = "paypal-demo.finora.local"  # never resolved: the demo is served in-process
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -43,6 +46,9 @@ class Settings(BaseSettings):
     paypal_base_url: str = "https://api-m.sandbox.paypal.com"
     # Currency for Orders API checkouts. Empty = the user's profile currency (INR by default).
     paypal_checkout_currency: str | None = None
+    # Without PayPal credentials, use FINORA's built-in PayPal demo (a local simulation of the REST
+    # API: orders, sign-in, subscriptions, transaction search). Labelled as a demo everywhere.
+    paypal_demo_mode: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -53,12 +59,21 @@ class Settings(BaseSettings):
         return bool(self.paypal_client_id and self.paypal_client_secret)
 
     @property
+    def paypal_available(self) -> bool:
+        """PayPal features work: real credentials, or the built-in demo."""
+        return self.paypal_configured or self.paypal_demo_mode
+
+    @property
     def paypal_environment(self) -> str:
+        if DEMO_PAYPAL_HOST in self.paypal_base_url or (not self.paypal_configured and self.paypal_demo_mode):
+            return "demo"
         return "sandbox" if "sandbox" in self.paypal_base_url else "live"
 
     @property
     def paypal_web_url(self) -> str:
         """Browser-facing PayPal site (sign-in, approval, account settings)."""
+        if self.paypal_environment == "demo":
+            return f"{self.frontend_url.rstrip('/')}/paypal-demo"
         return "https://www.sandbox.paypal.com" if self.paypal_environment == "sandbox" else "https://www.paypal.com"
 
     @property

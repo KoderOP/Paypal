@@ -30,6 +30,7 @@ CATALOG = [
     ScenarioInfo(type="increase_savings", title="Increase savings", description="Raise monthly savings / SIP by a percentage.", status="available"),
     ScenarioInfo(type="unexpected_payment", title="Unexpected payment", description="An emergency outflow on a given date.", status="available"),
     ScenarioInfo(type="expense_increase", title="Expenses change", description="Scale day-to-day spending by a percentage.", status="available"),
+    ScenarioInfo(type="income_loss", title="Job loss or pay cut", description="Regular income stops or drops for N months.", status="available"),
     ScenarioInfo(type="fx_change", title="Exchange rate moves", description="What if USD/INR drops or rises by a percentage?", status="available"),
 ]
 

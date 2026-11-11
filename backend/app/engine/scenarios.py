@@ -57,6 +57,14 @@ class AddSubscription(BaseModel):
     start: date | None = None
 
 
+class IncomeLoss(BaseModel):
+    """Job loss or a pay cut: regular income drops by `percent` for the next `months` months."""
+
+    type: Literal["income_loss"] = "income_loss"
+    months: int = Field(1, ge=1, le=12)
+    percent: Money = Field(Decimal("100"), gt=0, le=Decimal("100"))
+
+
 class FxChange(BaseModel):
     """What if the exchange rate moves? Scales future recurring income received in `currency`.
 
@@ -77,7 +85,7 @@ class UnexpectedPayment(BaseModel):
 
 Change = Annotated[
     Union[PurchaseChange, CancelSubscriptions, IncomeDelay, IncreaseSavings, ExpenseIncrease, UnexpectedPayment,
-          AddSubscription, FxChange],
+          AddSubscription, FxChange, IncomeLoss],
     Field(discriminator="type"),
 ]
 
@@ -210,6 +218,18 @@ def apply_changes(profile: FinancialProfile, a: Assumptions, changes: list, hori
             when = "today" if start == as_of else f"from {fmt_date(start)}"
             applied.append(AppliedChange(type=c.type, monthly_effect=-c.amount, one_off_effect=ZERO,
                                          description=f"Subscribe to {c.label} at {inr(c.amount)}/month, starting {when}"))
+
+        elif isinstance(c, IncomeLoss):
+            until = add_months(as_of, c.months, as_of.day)
+            pct = c.percent / Decimal(100)
+            hit = [e for e in events if e.kind == "income" and e.ref and e.on < until]
+            events += [e.model_copy(update={"amount": -money(e.amount * pct), "label": "Income lost"}) for e in hit]
+            lost = total(e.amount for e in hit) * pct
+            what = "Lose all regular income" if c.percent == 100 else f"Regular income cut by {c.percent}%"
+            applied.append(AppliedChange(type=c.type, monthly_effect=ZERO, one_off_effect=-money(lost),
+                                         description=f"{what} for {c.months} month(s) ({inr(lost)} less)"))
+            if not hit:
+                notes.append("No regular income falls in that period, so this changes nothing.")
 
         elif isinstance(c, FxChange):
             foreign = [r for r in profile.recurring_income if r.currency == c.currency]

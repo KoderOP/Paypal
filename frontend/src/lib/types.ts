@@ -156,7 +156,24 @@ export interface DemoFile {
 
 export interface StatusData { has_data: boolean; user_name: string; data_source: string | null; transaction_count: number }
 
-export interface PayPalStatus { configured: boolean; environment: string; api_sync_available: boolean; message: string }
+/** `demo` = no PayPal credentials, so FINORA's built-in PayPal simulation is used (environment "demo"). */
+export interface PayPalStatus { configured: boolean; environment: string; demo: boolean; api_sync_available: boolean; message: string }
+
+export interface PayPalDemoStatus { demo: boolean; environment: string; subscriptions: { id: string; name: string; amount: number; status: string }[] }
+export interface PayPalDemoOrder { id: string; status: string; amount: number; currency: string; description: string | null; merchant: string; funding: string | null }
+
+// ---- Stress testing ------------------------------------------------------------------------------
+export interface ShockResult {
+  id: string; name: string; description: string; changes: ScenarioChange[]; min_balance: number; min_balance_date: ISODate
+  first_below_buffer: ISODate | null; first_below_zero: ISODate | null; days_below_buffer: number; end_balance: number
+  solvent: boolean; above_buffer: boolean
+}
+export interface StressReport {
+  as_of: ISODate; assumptions: Assumptions; runway_months: string; monthly_burn: number; shocks: ShockResult[]
+  shocks_survived: number; bands: { on: ISODate; p10: number; p50: number; p90: number; baseline: number }[]
+  paths: number; spending_cv: string; monthly_cv: string; chance_below_buffer: string; chance_below_zero: string
+  p10_lowest: number; resilience: 'strong' | 'moderate' | 'fragile'; summary: string[]; disclaimer: string
+}
 
 export interface PayPalOverview extends PayPalStatus {
   linked: boolean
@@ -327,6 +344,7 @@ export interface PayPalIdentity { paypal_user_id: string; name: string; email: s
 export interface AuthState {
   authenticated: boolean
   login_available: boolean
+  demo: boolean
   environment: string
   identity: PayPalIdentity | null
   callback_url: string
@@ -345,6 +363,7 @@ export interface SnapshotCard {
 }
 export type ToolCard = ({ kind: 'payment_options' } & PaymentComparison) | ({ kind: 'affordability' } & Affordability)
   | ScenarioCard | SnapshotCard | ({ kind: 'cross_border' } & CrossBorder)
+  | { kind: 'stress'; resilience: StressReport['resilience']; summary: string[] }
 
 // ---- Compare scenarios -------------------------------------------------------------------------
 export interface NamedScenario { name: string; changes: ScenarioChange[] }

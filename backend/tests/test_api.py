@@ -35,9 +35,17 @@ def test_dashboard(client):
     assert len(d["forecast"]["points"]) == 91
 
 
-def test_paypal_overview(client):
+def test_paypal_overview_demo_mode(client):
     p = client.get("/api/integrations/paypal").json()
-    assert p["linked"] and p["transaction_count"] > 100 and not p["configured"]
+    assert p["linked"] and p["transaction_count"] > 100 and p["configured"] and p["demo"] and p["environment"] == "demo"
+    # Demo Transaction Search returns the same transaction ids as the demo CSV, so a sync de-duplicates.
+    r = client.post("/api/integrations/paypal/sync", json={"days": 30})
+    assert r.status_code == 200 and r.json()["imported"] == 0 and r.json()["skipped_duplicates"] > 0
+
+
+def test_paypal_overview_without_demo(client, demo_off):
+    p = client.get("/api/integrations/paypal").json()
+    assert not p["configured"] and not p["demo"]
     assert client.post("/api/integrations/paypal/sync", json={"days": 30}).status_code == 400
 
 

@@ -140,7 +140,7 @@ def test_scenario_endpoint(client):
 
 
 # ---- Checkout (Orders API) ---------------------------------------------------------------------------
-def test_checkout_requires_credentials_and_acknowledgement(client):
+def test_checkout_requires_credentials_and_acknowledgement(client, demo_off):
     body = {"amount": 75000, "label": "Laptop", "option_id": "pay_now", "acknowledged": True}
     assert client.post("/api/checkout/orders", json=body).status_code == 400
     assert client.post("/api/checkout/orders", json={**body, "acknowledged": False}).status_code == 422
@@ -312,7 +312,7 @@ def login_settings(monkeypatch):
     return s
 
 
-def test_login_unavailable_without_credentials(client):
+def test_login_unavailable_without_credentials(client, demo_off):
     me = client.get("/api/auth/me").json()
     assert me["authenticated"] is False and me["login_available"] is False
     r = client.get("/api/auth/paypal/login", follow_redirects=False)

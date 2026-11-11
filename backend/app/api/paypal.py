@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.money import money
 from app.data.models import Account, Transaction
+from app.integrations.paypal.client import paypal_runtime
 from app.integrations.paypal.source import PayPalApiError, PayPalNotConfigured, PayPalSource
 from app.schemas.api import ImportResult, PayPalSyncRequest
 from app.services import repository as repo
@@ -31,7 +31,7 @@ def paypal_overview(db: Session = Depends(get_db)):
         .group_by(sub.c.merchant).order_by(func.sum(sub.c.amount)).limit(6)
     ).all()
     return {
-        **PayPalSource(get_settings()).status(),
+        **PayPalSource(paypal_runtime()[0]).status(),
         "linked": count > 0,
         "transaction_count": count,
         "inflow": float(money(inflow)),
@@ -44,12 +44,13 @@ def paypal_overview(db: Session = Depends(get_db)):
 
 @router.get("/status")
 def paypal_status():
-    return PayPalSource(get_settings()).status()
+    return PayPalSource(paypal_runtime()[0]).status()
 
 
 @router.post("/sync", response_model=ImportResult)
 def paypal_sync(body: PayPalSyncRequest, db: Session = Depends(get_db)):
-    src = PayPalSource(get_settings(), days=body.days, today=repo.today())
+    settings, transport = paypal_runtime()
+    src = PayPalSource(settings, days=body.days, transport=transport, today=repo.today())
     try:
         txns = src.fetch()
     except PayPalNotConfigured as exc:

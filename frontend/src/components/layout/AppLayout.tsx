@@ -1,5 +1,5 @@
 import {
-  ArrowLeftRight, Bot, Columns3, FlaskConical, Globe2, LayoutDashboard, LogIn, LogOut, Menu, Repeat, Settings, ShieldAlert, Sparkles,
+  ArrowLeftRight, Bot, FlaskConical, Globe2, LayoutDashboard, LogIn, LogOut, Menu, Repeat, Settings, ShieldAlert, Sparkles,
   UploadCloud, UserRound, Wallet, X,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -13,10 +13,9 @@ export const NAV = [
   { to: '/crossborder', label: 'Cross-border income', icon: Globe2 },
   { to: '/twin', label: 'My Financial Twin', icon: UserRound },
   { to: '/simulator', label: 'What-if Simulator', icon: FlaskConical, highlight: true },
-  { to: '/compare', label: 'Compare scenarios', icon: Columns3 },
   { to: '/assistant', label: 'AI Financial Assistant', icon: Bot, highlight: true },
   { to: '/subscriptions', label: 'Subscriptions', icon: Repeat },
-  { to: '/stress', label: 'Stress Testing', icon: ShieldAlert, soon: true },
+  { to: '/stress', label: 'Stress Testing', icon: ShieldAlert },
   { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -39,7 +38,7 @@ function Logo() {
 function Nav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="mt-8 space-y-0.5" aria-label="Main">
-      {NAV.map(({ to, label, icon: Icon, soon, highlight, paypal }) => (
+      {NAV.map(({ to, label, icon: Icon, highlight, paypal }) => (
         <NavLink
           key={to}
           to={to}
@@ -57,12 +56,22 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
               <span className="flex-1">{label}</span>
               {paypal && !isActive && <span className="rounded bg-[#003087] px-1.5 text-[10px] font-semibold text-white">Core</span>}
               {highlight && !isActive && <Sparkles className="h-3.5 w-3.5 text-brand-500" />}
-              {soon && <span className={`text-[10px] ${isActive ? 'text-slate-300' : 'text-navy-400'}`}>Soon</span>}
             </>
           )}
         </NavLink>
       ))}
     </nav>
+  )
+}
+
+function DemoModeNote({ onNavigate }: { onNavigate?: () => void }) {
+  const { auth } = useAuth()
+  if (!auth?.demo) return null
+  return (
+    <Link to="/paypal" onClick={onNavigate} title="No PayPal credentials are set, so FINORA uses its built-in PayPal simulation."
+      className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-900 hover:bg-amber-100">
+      <FlaskConical className="h-3.5 w-3.5 shrink-0" /> PayPal demo mode · no real money
+    </Link>
   )
 }
 
@@ -113,6 +122,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Logo />
         <Nav />
         <DataCta />
+        <DemoModeNote />
         <Account />
       </aside>
 
@@ -129,7 +139,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
             </div>
             <Nav onNavigate={() => setOpen(false)} />
-            <div className="mt-6"><DataCta onNavigate={() => setOpen(false)} /><Account onNavigate={() => setOpen(false)} /></div>
+            <div className="mt-6"><DataCta onNavigate={() => setOpen(false)} /><DemoModeNote onNavigate={() => setOpen(false)} /><Account onNavigate={() => setOpen(false)} /></div>
           </div>
         </div>
       )}
