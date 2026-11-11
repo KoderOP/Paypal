@@ -54,7 +54,7 @@ def _args_ok(call: dict, expect: dict) -> tuple[bool, str]:
     return True, ""
 
 
-def run_case(case: dict, db, user, llm_factory) -> dict:
+def run_case(case: dict, db, user, llm_factory, pace_tpm: int = 0) -> dict:
     from app.ai.assistant import chat
 
     turns = case.get("turns") or [case["question"]]
@@ -67,6 +67,9 @@ def run_case(case: dict, db, user, llm_factory) -> dict:
         t0 = time.perf_counter()
         res = chat(history[-10:], db, user, llm_factory(), context)
         history.append({"role": "assistant", "content": res["reply"][:2000]})
+        if pace_tpm and q is not turns[-1] and res.get("usage"):  # pace between turns of a multi-turn case too
+            used = res["usage"]["prompt_tokens"] + res["usage"]["completion_tokens"]
+            time.sleep(max(0.0, used / pace_tpm * 60 - (time.perf_counter() - t0)) + 1)
         context = res.get("context") or context
     ms = int((time.perf_counter() - t0) * 1000)
     exp = case["expect"]
@@ -123,7 +126,7 @@ def main():
     cases = CASES[: args.limit] if args.limit else CASES
     rows = []
     for c in cases:
-        r = run_case(c, db, user, factory)
+        r = run_case(c, db, user, factory, args.tpm)
         rows.append(r)
         if args.tpm and r["tokens"]:
             time.sleep(max(0.0, r["tokens"] / args.tpm * 60 - r["ms"] / 1000) + 1)

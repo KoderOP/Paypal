@@ -98,6 +98,11 @@ class LlmClient:
                     call.notes.append(f"{r.status_code} from provider, retrying in {min(wait, MAX_BACKOFF_SECONDS):.1f}s")
                     self._sleep(min(MAX_BACKOFF_SECONDS, wait))
                     continue
+                if len(self.models) > 1:  # retries exhausted on this model: its sibling has a separate limit
+                    gone = self.models.pop(0)
+                    call.notes.append(f"{gone} still failing ({r.status_code}), switched to {self.model}")
+                    call.model, attempt = self.model, 0
+                    continue
                 raise LlmError("AI service is rate-limited" if r.status_code == 429 else f"AI service error {r.status_code}")
             if r.status_code == 400 and code == "tool_use_failed" and attempt < MAX_RETRIES:
                 attempt += 1

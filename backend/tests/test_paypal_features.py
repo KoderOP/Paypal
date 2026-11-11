@@ -180,7 +180,7 @@ def test_pay_later_checkout_records_instalments(client, fake_pp):
     fake_pp.approve(order["paypal_order_id"])
     client.get(f"/api/checkout/return?token={order['paypal_order_id']}", follow_redirects=False)
     done = client.post(f"/api/checkout/orders/{order['id']}/capture", json={"confirm": True}).json()
-    assert done["snapshot"]["recorded"] == {"kind": "obligations", "count": 4}
+    assert done["snapshot"]["recorded"] == {"kind": "obligations", "count": 4, "simulated_schedule": True}
     instalments = [o for o in client.get("/api/obligations").json() if o["category"] == "Pay Later"]
     assert len(instalments) == 4 and sum(o["amount"] for o in instalments) == 75000
 
@@ -421,7 +421,7 @@ def test_assistant_llm_invented_figure_is_replaced(client):
     finally:
         app.dependency_overrides.pop(get_llm, None)
     assert body["guardrail"] == "replaced" and "91,234" not in body["reply"] and "₹91,234" in body["note"]
-    assert body["reply"].startswith(body["tool_calls"][0]["card"]["recommendation"]["headline"])
+    assert body["tool_calls"][0]["card"]["recommendation"]["headline"] in body["reply"]  # may follow an "already paid" note
 
 
 # ---- Cross-currency checkout (USD sandbox, INR profile) --------------------------------------------------

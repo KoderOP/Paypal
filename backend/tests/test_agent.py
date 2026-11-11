@@ -105,10 +105,17 @@ def test_client_falls_back_to_second_model_when_primary_is_gone():
 
 
 def test_client_gives_up_after_bounded_retries():
-    handler, seen = scripted([httpx.Response(503)] * 5)
+    handler, seen = scripted([httpx.Response(503)] * 9)
     with pytest.raises(LlmError):
         LlmClient(groq(), httpx.MockTransport(handler), sleep=lambda _: None).complete([], [])
-    assert len(seen) == 3  # first try + MAX_RETRIES
+    assert len(seen) == 6  # (first try + MAX_RETRIES) on the primary, then the same on the fallback model
+
+
+def test_short_rate_limits_exhausted_on_primary_move_to_fallback():
+    handler, seen = scripted([httpx.Response(429, headers={"retry-after": "2"})] * 3 + [{"role": "assistant", "content": "ok"}])
+    c = LlmClient(groq(groq_model="big", groq_fallback_model="small"), httpx.MockTransport(handler), sleep=lambda _: None)
+    assert c.complete([], [])["content"] == "ok"
+    assert [s["model"] for s in seen] == ["big", "big", "big", "small"]
 
 
 # ---- Guardrail -------------------------------------------------------------------------------------------

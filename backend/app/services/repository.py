@@ -134,3 +134,31 @@ def balance_history(db: Session, user: User, txns: list[Txn], as_of: date) -> li
         out.append({"on": d, "balance": money(balance)})
         d += timedelta(days=1)
     return out
+
+
+ORIGIN_LABELS = {
+    "sample": "Sample data (fictional)",
+    "user_import": "Imported file",
+    "paypal_api": "PayPal Transaction Search",
+    "paypal_checkout": "PayPal checkout (Orders API)",
+    "unknown": "Imported before source tracking",
+}
+
+
+def origin_label(origin: str, environment: str | None) -> str:
+    base = ORIGIN_LABELS.get(origin, origin)
+    if origin in ("paypal_api", "paypal_checkout") and environment:
+        return f"{base} · {'demo mode (simulated)' if environment == 'demo' else environment.capitalize()}"
+    return base
+
+
+def provenance(db: Session, user: User) -> list[dict]:
+    """Where the twin's transactions come from: one row per (origin, environment), with counts and date range."""
+    rows = db.execute(
+        select(Account.origin, Account.environment, func.count(Transaction.id), func.min(Transaction.posted_on),
+               func.max(Transaction.posted_on))
+        .join(Transaction, Transaction.account_id == Account.id).where(Account.user_id == user.id)
+        .group_by(Account.origin, Account.environment).order_by(func.count(Transaction.id).desc())
+    ).all()
+    return [{"origin": o, "environment": e, "label": origin_label(o, e), "count": n, "first": f, "last": l,
+             "synthetic": o == "sample" or e == "demo"} for o, e, n, f, l in rows]

@@ -2,12 +2,13 @@
 from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.data.demo_files import DEMO_FILES, render
+from app.data.demo_files import DEMO_FILES, is_sample_content, render
 from app.data.models import Account, Transaction
 from app.data.sources.files import FORMAT_SOURCE, CsvValidationError, parse_file
 from app.schemas.api import DemoFileOut, ImportResult, StatusOut
@@ -23,17 +24,19 @@ FORMATS = ("auto", "transactions", "bank_statement", "paypal_activity")
 def status(db: Session = Depends(get_db)):
     user = repo.get_primary_user(db)
     count = db.scalar(select(func.count(Transaction.id)).join(Account).where(Account.user_id == user.id)) or 0
+    prov = repo.provenance(db, user)
     return StatusOut(has_data=count > 0, user_name=user.name, data_source=(user.preferences or {}).get("data_source"),
-                     transaction_count=count)
+                     transaction_count=count, provenance=prov, sample_count=sum(p["count"] for p in prov if p["synthetic"]))
 
 
 @router.get("/demo-files", response_model=list[DemoFileOut])
 def demo_files():
     out = []
     for f in DEMO_FILES:
-        _, _, opening = render(f.id, repo.today(), get_settings().demo_seed)
+        _, content, opening = render(f.id, repo.today(), get_settings().demo_seed)
         out.append(DemoFileOut(id=f.id, title=f.title, format=f.format, filename=f.filename, description=f.description,
-                               suggested_opening_balance=opening if f.format == "transactions" else None))
+                               suggested_opening_balance=opening if f.format == "transactions" else None,
+                               rows=max(0, len([l for l in content.splitlines() if l.strip()]) - 1)))
     return out
 
 
@@ -77,12 +80,36 @@ async def import_file(
 
     source = FORMAT_SOURCE[parsed.format]
     user = repo.get_primary_user(db)
+    origin = "sample" if is_sample_content(content, file.filename) else "user_import"
     result = store_transactions(db, user, source, parsed.transactions,
-                                opening if opening is not None else parsed.opening_balance, replace, parsed.format)
+                                opening if opening is not None else parsed.opening_balance, replace, parsed.format,
+                                origin=origin)
     warnings = list(parsed.warnings)
+    if origin == "sample":
+        warnings.append("This is FINORA's synthetic sample file, so it's labelled as sample data, not as real records.")
     if opening is None and parsed.opening_balance is None and parsed.format == "transactions":
         warnings.append("No opening balance given — balances start from ₹0. Add a 'balance' column or enter one.")
     return ImportResult(format=parsed.format, source=source, warnings=warnings, **result)
+
+
+class LoadSample(BaseModel):
+    file_id: str = Field("paypal_activity", max_length=40)
+    replace: bool = True
+
+
+@router.post("/data/sample", response_model=ImportResult)
+def load_sample(body: LoadSample, db: Session = Depends(get_db)):
+    """Load FINORA's fictional sample profile. Generated on the server, so it is always stored as origin='sample'."""
+    try:
+        _, content, opening = render(body.file_id, repo.today(), get_settings().demo_seed)
+    except KeyError:
+        raise HTTPException(404, "Sample file not found")
+    parsed = parse_file(content, "auto")
+    source = FORMAT_SOURCE[parsed.format]
+    result = store_transactions(db, repo.get_primary_user(db), source, parsed.transactions,
+                                parsed.opening_balance if parsed.opening_balance is not None else opening, body.replace,
+                                parsed.format, origin="sample")
+    return ImportResult(format=parsed.format, source=source, warnings=[], **result)
 
 
 @router.delete("/data", status_code=204)

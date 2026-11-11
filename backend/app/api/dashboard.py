@@ -27,6 +27,7 @@ def dashboard(db: Session = Depends(get_db)):
         as_of=as_of,
         user_name=user.name,
         data_source=(user.preferences or {}).get("data_source") or "unknown",
+        provenance=repo.provenance(db, user),
         kpis=Kpis(
             current_balance=profile.current_balance,
             monthly_income=profile.monthly_income,

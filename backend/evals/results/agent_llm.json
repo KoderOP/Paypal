@@ -3,54 +3,132 @@
   "mode": "llm",
   "provider": "groq",
   "model": "openai/gpt-oss-120b",
-  "commit": "4bbf771",
+  "commit": "0a427b2",
   "python": "3.14.2",
   "eval_today": "2026-11-03",
+  "paced_tpm": 8000,
   "summary": {
     "overall": {
-      "n": 3,
-      "tool_accuracy": 1.0,
-      "arg_accuracy": 1.0,
+      "n": 40,
+      "tool_accuracy": 0.95,
+      "arg_accuracy": 0.925,
       "grounded_rate": 1.0,
-      "guardrail_replaced": 0.0,
-      "fallback_rate": 0.333,
-      "latency_ms_p50": 7647,
-      "latency_ms_p95": 23166,
-      "mean_tokens": 2898.7
+      "guardrail_replaced": 0.075,
+      "fallback_rate": 0.125,
+      "latency_ms_p50": 1802.5,
+      "latency_ms_p95": 14294,
+      "mean_tokens": 4076.4
     },
     "seen_wording": {
-      "n": 3,
+      "n": 26,
       "tool_accuracy": 1.0,
       "arg_accuracy": 1.0,
       "grounded_rate": 1.0,
-      "guardrail_replaced": 0.0,
-      "fallback_rate": 0.333,
-      "latency_ms_p50": 7647,
-      "latency_ms_p95": 23166,
-      "mean_tokens": 2898.7
+      "guardrail_replaced": 0.038,
+      "fallback_rate": 0.115,
+      "latency_ms_p50": 1856.5,
+      "latency_ms_p95": 16021,
+      "mean_tokens": 4165.4
     },
     "paraphrases": {
-      "n": 0,
-      "tool_accuracy": null,
-      "arg_accuracy": null,
-      "grounded_rate": null,
-      "guardrail_replaced": null,
-      "fallback_rate": null,
-      "latency_ms_p50": null,
-      "latency_ms_p95": null,
-      "mean_tokens": null
+      "n": 14,
+      "tool_accuracy": 0.857,
+      "arg_accuracy": 0.786,
+      "grounded_rate": 1.0,
+      "guardrail_replaced": 0.143,
+      "fallback_rate": 0.143,
+      "latency_ms_p50": 1712.0,
+      "latency_ms_p95": 12258,
+      "mean_tokens": 3911.1
     },
     "by_category": {
+      "affordability": {
+        "n": 5,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 1.0,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 1322,
+        "latency_ms_p95": 1808,
+        "mean_tokens": 4432.2
+      },
+      "checkout": {
+        "n": 4,
+        "tool_accuracy": 0.75,
+        "arg_accuracy": 0.75,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.5,
+        "latency_ms_p50": 8018.0,
+        "latency_ms_p95": 14294,
+        "mean_tokens": 3025
+      },
+      "cross_border": {
+        "n": 2,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 1.0,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 1300.5,
+        "latency_ms_p95": 1388,
+        "mean_tokens": 3953
+      },
+      "follow_up": {
+        "n": 4,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 0.75,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.75,
+        "latency_ms_p50": 14139.5,
+        "latency_ms_p95": 21205,
+        "mean_tokens": 1240.5
+      },
       "purchase": {
+        "n": 6,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 1.0,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 1917.5,
+        "latency_ms_p95": 2664,
+        "mean_tokens": 4729.3
+      },
+      "scenario": {
+        "n": 14,
+        "tool_accuracy": 0.929,
+        "arg_accuracy": 0.929,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.214,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 1931.5,
+        "latency_ms_p95": 2717,
+        "mean_tokens": 4714.1
+      },
+      "snapshot": {
+        "n": 2,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 1.0,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 1343.0,
+        "latency_ms_p95": 1369,
+        "mean_tokens": 4275.5
+      },
+      "stress": {
         "n": 3,
         "tool_accuracy": 1.0,
         "arg_accuracy": 1.0,
         "grounded_rate": 1.0,
         "guardrail_replaced": 0.0,
-        "fallback_rate": 0.333,
-        "latency_ms_p50": 7647,
-        "latency_ms_p95": 23166,
-        "mean_tokens": 2898.7
+        "fallback_rate": 0.0,
+        "latency_ms_p50": 1444,
+        "latency_ms_p95": 1578,
+        "mean_tokens": 4334
       }
     }
   },
@@ -70,9 +148,9 @@
       "guardrail": "passed",
       "mode": "llm",
       "fallback": false,
-      "ms": 1579,
-      "tokens": 4420,
-      "reply": "**Verdict:** Split the purchase with **PayPal Pay in 4** – you stay above your ₹20 k safety buffer and keep a healthy balance.\n\n- **Pay in full today** would drop your balance to about **₹13.8 k**, breaching the buffer for 7 days.  \n- **Waiting until 15 Nov** avoids the breach, but you’d have to postpone the laptop for two weeks.  \n- **PayPal Pay in 4** spreads the ₹75 k into four ₹18,750 installments, keeping the lowest projected balance at **₹52.2 k** (well above the buffer) with **no days below the buffer**.  \n- The **Pay Monthly (12 mo)** option adds interest (≈₹8.4 k extra) and pushes you"
+      "ms": 1773,
+      "tokens": 5388,
+      "reply": "**Verdict:** You can buy the laptop safely by using PayPal Pay in 4 – you stay above your ₹20,000 safety buffer.\n\n- **Pay in full today** – minimum balance would drop to **₹13,800.16** on 2026‑11‑14, putting you **7 days below** your buffer.  \n- **Wait until 15 Nov** – you stay safe, with a minimum balance of **₹33,460.06** (no days below buffer).  \n- **PayPal Pay in 4** (recommended) – first payment **₹18,750** today, minimum balance stays at **₹52,210.06** (no days below buffer).  \n- **Pay Monthly 12 mo** – would cost extra **₹8,366.74** in interest, raising the total to **₹83,366.74** and l"
     },
     {
       "id": "buy-02",
@@ -89,9 +167,9 @@
       "guardrail": "passed",
       "mode": "llm",
       "fallback": false,
-      "ms": 7647,
-      "tokens": 4276,
-      "reply": "**Verdict:** You can afford the ₹40,000 phone — pay‑now is the safest choice.\n\n- Paying ₹40,000 today leaves a projected minimum balance of **₹48,800** (well above your ₹20,000 safety buffer).  \n- All other options (wait, Pay in 4, 12‑month Pay Monthly) also stay above the buffer, but they delay the purchase or add extra cost.  \n- The “pay now” option has **no extra fees or interest** and the earliest receipt date (today).  \n\nIf you’re comfortable waiting, the “wait until 15 Nov” option gives a higher future balance, but there’s no financial need to delay."
+      "ms": 2664,
+      "tokens": 4491,
+      "reply": "**Verdict:** You can afford the ₹40,000 phone — pay‑now is the safest choice.\n\n- Paying ₹40,000 today leaves a projected minimum balance of **₹48,800** (well above your ₹20,000 safety buffer).  \n- The “wait until 15 Nov” option keeps an even higher balance (**₹68,460**) but delays ownership.  \n- PayPal Pay‑in‑4 spreads the cost with no extra fee, but your balance would dip to **₹78,460** after the first payment, still safe.  \n- The 12‑month Pay‑Monthly plan adds ₹4,462 extra cost and drops your balance to **₹104,755**, the least efficient.\n\nSince all options stay above your buffer, the recomme"
     },
     {
       "id": "buy-03",
@@ -105,12 +183,717 @@
         "compare_payment_options"
       ],
       "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1905,
+      "tokens": 4587,
+      "reply": "**Verdict:** Go for the PayPal Pay Monthly (12 mo) plan – it lets you get the scooter today and keeps you safely above your ₹20,000 buffer.\n\n- **First payment:** ₹13,894 (due 2026‑12‑03)  \n- **Total cost over 12 months:** ₹166,734 (+₹16,734 extra vs cash price)  \n- **Cash‑flow impact:** Your balance never falls below the buffer (minimum ₹94,566 on 2026‑12‑14).  \n- **Other options** (pay‑now, wait, Pay‑in‑4) all dip below the buffer, with the pay‑now route dropping to –₹61,200 and staying negative for 70 days.  \n\nSo the 12‑month Pay Later option is the only safe choice."
+    },
+    {
+      "id": "buy-04",
+      "category": "purchase",
+      "paraphrase": true,
+      "question": "Thinking of getting a PS5 for 55k. Split it or pay outright?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1930,
+      "tokens": 4557,
+      "reply": "**Verdict:** Pay now (full ₹55,000) is the simplest and safest choice.\n\n- Paying in full today leaves a minimum projected balance of **₹33,800** (still ₹13,800 above your ₹20,000 safety buffer).  \n- Waiting until 15 Nov gives a higher minimum balance (**₹53,460**) but delays getting the PS5.  \n- PayPal “Pay in 4” spreads the cost with no extra fees, but your minimum balance drops to **₹67,210** and you won’t finish paying until mid‑December.  \n- The 12‑month Pay Monthly plan adds **₹6,135** in interest, pushing your minimum balance to **₹103,365** and extending payments for a year.  \n\nAll opti"
+    },
+    {
+      "id": "buy-05",
+      "category": "purchase",
+      "paraphrase": true,
+      "question": "My sister's wedding gift will be around twenty-five thousand rupees, is that ok right now?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1653,
+      "tokens": 4654,
+      "reply": "**Verdict:** Yes – you can comfortably afford the ₹25,000 wedding gift right now.\n\n- Paying in full today leaves a projected minimum balance of **₹63,800** (well above your ₹20,000 safety buffer).  \n- No extra cost or interest is incurred with the “pay now” option.  \n- If you prefer to spread the payment, PayPal’s “Pay in 4” splits it into four ₹6,250 installments with the same safe balance outcome.  \n- Waiting until 15 Nov would keep an even higher balance (₹83,460), but isn’t necessary since the immediate purchase is already safe."
+    },
+    {
+      "id": "buy-06",
+      "category": "purchase",
+      "paraphrase": true,
+      "question": "Is splurging 90000 on a new camera a bad idea?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1978,
+      "tokens": 4699,
+      "reply": "**Verdict:** Paying ₹90,000 for a new camera in full today would dip below your ₹20,000 safety buffer, but splitting the cost with PayPal Pay in 4 keeps you safely above it.  \n\n- **Pay‑in‑full today:** First payment ₹90,000 → balance falls to **‑₹1,199.84** (15 days below the buffer).  \n- **Wait until 15 Dec:** First payment ₹90,000 on 15 Dec → balance stays at **₹37,531.39**, never below the buffer.  \n- **PayPal Pay in 4 (recommended):** First payment ₹22,500 today, then three more installments → balance stays at **₹37,531.39**, staying above the buffer throughout.  \n\nSo, if you want the came"
+    },
+    {
+      "id": "aff-01",
+      "category": "affordability",
+      "paraphrase": false,
+      "question": "What's the most I can spend this month?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1322,
+      "tokens": 4001,
+      "reply": "**You can safely spend up to ₹88,460 this month.**  \n\n- The highest amount you could spend while staying above your ₹20,000 safety buffer is **₹88,460**, projected for **15 Nov 2026**.  \n- Today you could spend up to **₹68,800** and still keep the buffer.  \n- Any spend above ₹88,460 would dip below your safety buffer."
+    },
+    {
+      "id": "aff-02",
+      "category": "affordability",
+      "paraphrase": false,
+      "question": "When can I safely buy a ₹1.2 lakh vacation?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1808,
+      "tokens": 4451,
+      "reply": "**Verdict:** The vacation can be safely booked on **15 Jan 2027** (about 73 days from now).  \n\n- Today you could safely spend only **₹68,800**, leaving a shortfall of **₹51,200** for the ₹1.2 lakh purchase.  \n- Your safety buffer is **₹20,000**; buying today would drop you **₹51,200** below that buffer.  \n- The earliest date that keeps you above the buffer while covering the full amount is **15 Jan 2027**."
+    },
+    {
+      "id": "aff-03",
+      "category": "affordability",
+      "paraphrase": false,
+      "question": "How much can I spend today without going below my buffer?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1481,
+      "tokens": 3914,
+      "reply": "**Verdict:** You can safely spend up to **₹68,800** today and stay above your ₹20,000 safety buffer.  \n\n- This is the maximum amount you can spend right now without dropping below the buffer.  \n- The next date you could safely spend the same amount is **2026‑11‑14** (if you wait).  \n- Your safety buffer remains unchanged at **₹20,000**."
+    },
+    {
+      "id": "aff-04",
+      "category": "affordability",
+      "paraphrase": true,
+      "question": "What's my spending headroom before payday?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 993,
+      "tokens": 5741,
+      "reply": "**You can safely spend up to ₹68,800 today.**  \n\n- Your safety buffer is ₹20,000, so this keeps you above that limit.  \n- The next date with the most headroom is 15 Nov 2026, when you could spend up to ₹88,460 in the month.  \n- Any larger purchase today would dip below your buffer."
+    },
+    {
+      "id": "aff-05",
+      "category": "affordability",
+      "paraphrase": true,
+      "question": "Earliest date I could drop ₹60,000 on a sofa?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "find_affordability"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1184,
+      "tokens": 4054,
+      "reply": "**Verdict:** You can safely spend ₹60,000 on the sofa **today**.\n\n- Today’s max safe spend is ₹68,800, so the purchase stays **₹8,800 above** your ₹20,000 safety buffer.  \n- Projected balance after buying today would be **₹28,800**, still comfortably above the buffer.  \n- No waiting is needed; the earliest safe date is **2026‑11‑03** (today)."
+    },
+    {
+      "id": "scn-01",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I cancel three subscriptions?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2702,
+      "tokens": 4533,
+      "reply": "**Verdict:** Canceling the three subscriptions improves your cash‑flow and keeps your balance comfortably above the ₹20,000 safety buffer.  \n\n- **Monthly savings:** ₹1,933 per month (Cult.fit, Netflix, Amazon Prime).  \n- **Minimum balance:** rises from ₹88,800.16 to ₹90,434.16 – an increase of **₹1,634**; the new low point occurs on **2026‑11‑14**.  \n- **90‑day end balance:** grows from ₹168,391.13 to **₹174,190.13**, a boost of **₹5,799**.  \n- **Safety buffer:** still well‑covered; the balance never falls below the ₹20,000 threshold."
+    },
+    {
+      "id": "scn-02",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if my income is delayed by 15 days?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2493,
+      "tokens": 4432,
+      "reply": "**Verdict:** A 15‑day income delay would lower your lowest projected balance by roughly ₹10,375, but you’d still stay comfortably above your ₹20,000 safety buffer.\n\n- **Minimum balance:** drops from **₹88,800** (baseline) to **₹78,425** in the scenario.  \n- **Date of low point:** the dip occurs around **29 Nov 2026**.  \n- **Safety buffer:** remains intact; the projected balance stays well above the ₹20,000 buffer.  \n- **Overall impact:** no change to the 90‑day end balance (still **₹168,391**).  \n\nYour finances stay safe, though you’ll have a tighter cash cushion during the delay."
+    },
+    {
+      "id": "scn-03",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I increase my monthly savings by 10%?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1600,
+      "tokens": 4412,
+      "reply": "**Verdict:** Raising your monthly savings by 10 % will lower your spendable cash flow, but you’ll still stay safely above your ₹20,000 buffer.\n\n- **Monthly impact:** –₹1,000 per month (‑₹3,000 over 90 days).  \n- **Lowest balance:** drops from ₹88,800 to ₹87,800 (the ₹1,000 decline shown as *min_balance_change*).  \n- **90‑day end balance:** falls from ₹168,391 to ₹165,391 (*end_balance_change* = ‑₹3,000).  \n- **Risk level:** Low – balance remains above the safety buffer throughout the period."
+    },
+    {
+      "id": "scn-04",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I add a ₹499/month gym membership?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1480,
+      "tokens": 5346,
+      "reply": "You can add the ₹499/month gym membership without breaching your safety buffer.  \n\n- **Minimum balance** falls from ₹88,800.16 to ₹88,301.16 (‑₹499).  \n- **End‑of‑90‑day balance** drops from ₹168,391.13 to ₹166,894.13 (‑₹1,497).  \n- The lowest balance stays well above your ₹20,000 buffer.  \n- No liquidity stress is detected for the next 90 days."
+    },
+    {
+      "id": "scn-05",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I lose my job for 2 months?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1697,
+      "tokens": 4520,
+      "reply": "Your balance will fall below your safety buffer and even go negative during the job‑loss period.\n\n- **Baseline vs. scenario**:  \n  - Baseline minimum balance: ₹88,800.  \n  - Scenario minimum balance: **‑₹2,469** (below the ₹20,000 buffer).  \n  - End‑balance after 90 days: ₹38,391 (down ₹130,000 from baseline).  \n- **Key dates**:  \n  - Lowest point: 11 Jan 2027 (‑₹2,469).  \n  - Buffer breach: 14 Jan 2027.  \n- **Risk**: Projected overdraft – your account would dip into negative territory, creating a critical risk to your cash flow."
+    },
+    {
+      "id": "scn-06",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I cancel Netflix and Spotify and my salary is 2 weeks late?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_financial_snapshot",
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "replaced",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 3839,
+      "tokens": 7186,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n• Changes: Cancel Cult.fit, Netflix (saves ₹1,634/month); Delay income due 15 Nov 2026 by 14 days.\n• In 90 days your balance would be ₹1,73,293 instead of ₹1,68,391 (+₹4,902).\n• Lowest projected balance: ₹80,648 on 28 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: +₹1,634 per month, +₹19,608 per year."
+    },
+    {
+      "id": "scn-07",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if I have a ₹30,000 medical emergency next week?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1797,
+      "tokens": 4512,
+      "reply": "You can cover the ₹30,000 emergency without breaching your safety buffer.\n\n- After the payment on 10 Nov 2026 your balance drops to ₹98,086.33.  \n- The lowest balance over the next 90 days falls to ₹58,800.16, still well above your ₹20,000 buffer.  \n- No liquidity stress is detected; you remain in the “low risk” zone.  \n- You’ll have roughly ₹30,000 of discretionary cash left for the next month while the buffer stays intact."
+    },
+    {
+      "id": "scn-08",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if my spending goes up by 20%?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2230,
+      "tokens": 4305,
+      "reply": "Your balance will dip by ₹10,711 over the next 90 days, but it will still stay above your ₹20,000 safety buffer.\n\n- Baseline 90‑day balance: ₹168,391.13  \n- Scenario 90‑day balance (20 % higher spending): ₹157,679.52  \n- Minimum balance in the scenario: ₹87,387.64 (₹1,412.52 below the baseline minimum)  \n- The lowest point occurs on 2026‑11‑14, still above ₹20,000."
+    },
+    {
+      "id": "scn-09",
+      "category": "scenario",
+      "paraphrase": false,
+      "question": "What if USD/INR drops 3%?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2717,
+      "tokens": 4363,
+      "reply": "Your balance stays exactly the same – a 3 % drop in USD/INR has no effect on your cash flow.  \n\n- Baseline minimum balance: ₹88,800.16  \n- Scenario minimum balance: ₹88,800.16 (Δ ₹0)  \n- Safety buffer of ₹20,000 remains well below your minimum balance.  \n- No new risks or liquidity concerns appear over the next 90 days."
+    },
+    {
+      "id": "scn-10",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "Suppose I get laid off next month and it takes me three months to find work.",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2277,
+      "tokens": 4474,
+      "reply": "You’ll hit an overdraft in the first month of the lay‑off (11 Jan 2027).  \n\n- Baseline minimum balance: ₹88,800.  \n- Scenario minimum balance: ₹‑26,609 (₹115,409 below baseline).  \n- Safety buffer (₹20,000) is breached; the lowest point is ₹‑46,609 below the buffer.  \n- By the end of the 3‑month loss, your balance will be ₹‑26,609, a shortfall of ₹195,000.  \n- You’ll need to cut spending or find alternative income before the end of February 2027 to stay above the buffer."
+    },
+    {
+      "id": "scn-11",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "I'm planning to trim my day-to-day spending by 15 percent. How does that change things?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2066,
+      "tokens": 4440,
+      "reply": "You’ll finish the next 90 days with about ₹8,034 more than you would have otherwise, and your balance will stay comfortably above your ₹20,000 safety buffer.\n\n- **Balance after 90 days:** ₹176,425 (↑ ₹8,034 from baseline ₹168,391).  \n- **Lowest balance in the period:** ₹89,860 (↑ ₹1,060 from baseline ₹88,800).  \n- **Buffer status:** You stay well above the ₹20,000 buffer throughout.  \n- **First day you hit the new low:** 2026‑11‑14, still ₹89,860."
+    },
+    {
+      "id": "scn-12",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "Drop my Amazon Prime and YouTube Premium, how much better off am I?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "replaced",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1664,
+      "tokens": 4427,
+      "reply": "Changes: Cancel Amazon Prime, YouTube Premium (saves ₹448/month).\n• In 90 days your balance would be ₹1,69,735 instead of ₹1,68,391 (+₹1,344).\n• Lowest projected balance: ₹88,800 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: +₹448 per month, +₹5,376 per year."
+    },
+    {
+      "id": "scn-13",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "Acme pays me a fortnight late every month from now on. Will I be ok?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1760,
+      "tokens": 4473,
+      "reply": "**Verdict:** Yes, a 14‑day delay from Acme won’t push you below your ₹20,000 safety buffer.\n\n- Baseline 90‑day minimum balance: ₹88,800.  \n- Scenario 90‑day minimum balance (with delay): ₹79,014.  \n- Difference: –₹9,786, still comfortably above the buffer.  \n- No liquidity risk detected for the next 90 days."
+    },
+    {
+      "id": "scn-14",
+      "category": "scenario",
+      "paraphrase": true,
+      "question": "My car needs an urgent ₹45,000 repair. What does that do to my cash?",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['compare_payment_options']",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": "replaced",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1432,
+      "tokens": 4574,
+      "reply": "Pay in full today. You can afford it.\n• Recommended: Pay in full today. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: lowest balance ₹43,800 on 14 Nov 2026, above your ₹20,000 buffer.\n• Wait until 15 Nov: lowest balance ₹63,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay in 4: lowest balance ₹74,710 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay Monthly · 12 mo: lowest balance ₹1,04,292 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹5,020 extra."
+    },
+    {
+      "id": "str-01",
+      "category": "stress",
+      "paraphrase": false,
+      "question": "How resilient are my finances?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "run_stress_test"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1578,
+      "tokens": 4392,
+      "reply": "Your finances are **moderately resilient** – you can comfortably cover the next 3.1 months without dipping below your ₹20,000 safety buffer.\n\n- Current balance: ₹110,000.  \n- Monthly burn: ₹35,340.  \n- Runway: 3.1 months (≈ 90 days).  \n- No scenario in the stress test drops the balance below ₹20,000 or to zero.  \n\n**Key shock scenarios**  \n- Job loss for 1 month → lowest balance ₹43,460 on 2026‑12‑14 (still above buffer).  \n- Job loss for 3 months → balance falls to –₹26,609 on 2027‑02‑01 (not solvent).  \n- Pay cut 30 % → lowest balance ₹88,531 on 2027‑01‑14 (above buffer).  \n- Medical emergen"
+    },
+    {
+      "id": "str-02",
+      "category": "stress",
+      "paraphrase": false,
+      "question": "How long would my money last in a worst case?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "run_stress_test"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1333,
+      "tokens": 4267,
+      "reply": "Your money will run out in about **3 months** if the worst shock hits.  \n\n- Current balance: ₹110,000.  \n- Monthly burn: ₹35,340.  \n- Safety buffer: ₹20,000.  \n- Worst‑case shock (3‑month job loss) pushes the balance below zero on 2027‑02‑01."
+    },
+    {
+      "id": "str-03",
+      "category": "stress",
+      "paraphrase": true,
+      "question": "Am I prepared if things go badly?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "run_stress_test"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1444,
+      "tokens": 4343,
+      "reply": "Your finances are **moderately resilient** – you have a little runway, but a prolonged shock would push you into negative balance.\n\n- Current balance: ₹110,000.  \n- Monthly burn: ₹35,340, giving a runway of **3.1 months**.  \n- Safety buffer: ₹20,000 – you stay above it in all scenarios except the 3‑month job‑loss shock.  \n- Worst shock: **Job loss for 3 months** would drop your balance to **‑₹26,608.87** (solvent false).  \n- No scenario shows a chance of falling below the buffer (0 %)."
+    },
+    {
+      "id": "xb-01",
+      "category": "cross_border",
+      "paraphrase": false,
+      "question": "How much am I losing to PayPal fees?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_cross_border_summary"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1213,
+      "tokens": 4023,
+      "reply": "You’re not losing any money to PayPal fees right now – you have no foreign‑income transactions to be charged on.  \n- Your PayPal balance is all domestic, so there are no PayPal‑to‑PayPal or currency‑conversion fees.  \n- PayPal India will automatically move the money to your linked bank account, so there’s no withdrawal fee to worry about.  \n- If you start receiving income from abroad, we can run a new summary to see the exact fee impact."
+    },
+    {
+      "id": "xb-02",
+      "category": "cross_border",
+      "paraphrase": false,
+      "question": "What exchange rate did PayPal give me on my USD income?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_cross_border_summary"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1388,
+      "tokens": 3883,
+      "reply": "I don’t see any USD income in your PayPal account, so there’s no exchange rate to report. If you do receive foreign funds in the future, let me know and I can fetch the exact rate PayPal applied."
+    },
+    {
+      "id": "snap-01",
+      "category": "snapshot",
+      "paraphrase": false,
+      "question": "How am I doing financially?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1369,
+      "tokens": 4232,
+      "reply": "You’re in a solid spot – a healthy cash buffer and a positive 90‑day runway.  \n\n- Current balance: ₹110,000  \n- Monthly income: ₹65,000, next paycheck on 2026‑11‑15  \n- Avg. monthly spending: ₹36,818 (incl. ₹2,500 in subscriptions)  \n- Monthly investments: ₹10,000  \n- Safety buffer: ₹20,000 (you’re above it)  \n- Projected balances: ₹128,086 in 30 days, ₹168,391 in 90 days  \n- Lowest projected balance: ₹88,800 on 2026‑11‑14 (still above the buffer)"
+    },
+    {
+      "id": "snap-02",
+      "category": "snapshot",
+      "paraphrase": true,
+      "question": "Give me a quick summary of my money.",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1317,
+      "tokens": 4319,
+      "reply": "You’re in a solid spot: ₹110,000 in hand, ₹65,000 coming in next month, and a safety buffer of ₹20,000 comfortably met.\n\n- **Cash flow**: Monthly income ₹65,000 vs. average spending ₹36,818 (incl. ₹10,000 investments, ₹2,500 subscriptions).  \n- **Subscriptions**: 6 active services (Cult.fit ₹985, Netflix ₹649, Amazon Prime ₹299, JioHotstar ₹299, YouTube Premium ₹149, Spotify ₹119) with the next bill on 2026‑11‑07.  \n- **Projected balances**: ₹128,086 by 30 days, ₹168,391 by 90 days; the lowest projected balance is ₹88,800 on 2026‑11‑14, still above your ₹20,000 buffer.  \n- **Next income**: Exp"
+    },
+    {
+      "id": "pay-01",
+      "category": "checkout",
+      "paraphrase": false,
+      "question": "Pay with PayPal for a ₹75,000 laptop using Pay in 4",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options",
+        "prepare_paypal_checkout"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2028,
+      "tokens": 7465,
+      "reply": "✅ **Drafted PayPal Pay‑in‑4 checkout for ₹75,000 laptop – ready for your confirmation.**\n\n- First installment ₹18,750 on 2026‑11‑03, then ₹18,750 on 2026‑11‑17, 2026‑12‑01, and 2026‑12‑15.  \n- Minimum balance after the last payment will be ₹52,210, comfortably above your ₹20,000 safety buffer.  \n- No extra cost or APR shown (illustrative); PayPal will finalize terms at checkout.  \n- Click “Confirm” in the PayPal app to complete the payment."
+    },
+    {
+      "id": "pay-02",
+      "category": "checkout",
+      "paraphrase": false,
+      "question": "OK, go ahead with Pay in 4",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "prepare_paypal_checkout"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 2053,
+      "tokens": 4635,
+      "reply": "✅ Drafted PayPal Pay‑in‑4 checkout for ₹75,000 “Laptop”.  \n- First payment ₹18,750 on 2026‑11‑03, then ₹18,750 on 2026‑11‑17, 2026‑12‑01, 2026‑12‑15.  \n- No extra cost, keeps your balance above the ₹20,000 safety buffer.  \n\nPlease review the card in your PayPal app and approve the payment there. I’ll not charge anything until you confirm."
+    },
+    {
+      "id": "pay-03",
+      "category": "checkout",
+      "paraphrase": false,
+      "question": "Fine, pay for it in full now",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "prepare_paypal_checkout"
+      ],
+      "grounded": true,
       "guardrail": null,
       "mode": "rules",
       "fallback": true,
-      "ms": 23166,
+      "ms": 14294,
       "tokens": 0,
-      "reply": "Split it with PayPal Pay Monthly · 12 mo: get it today and stay above your buffer.\n• Recommended: PayPal Pay Monthly · 12 mo. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: drops to -₹61,200 on 14 Nov 2026, below your ₹20,000 buffer for 70 day(s).\n• Wait until 15 Jan: drops to -₹3,397 on 14 Feb 2027, below your ₹20,000 buffer for 19 day(s).\n• PayPal Pay in 4: drops to -₹22,469 on 14 Jan 2027, below your ₹20,000 buffer for 60 day(s).\n• PayPal Pay Monthly · 12 mo: lowest balance ₹94,566 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹16,734 extra."
+      "reply": "I've prepared a PayPal checkout for Phone (₹40,000) using Pay in full today. Nothing has been charged.\n• Your lowest projected balance would be ₹48,800 on 14 Nov 2026, which stays above your safety buffer.\n• Review the details and confirm below; you'll then approve the payment on PayPal."
+    },
+    {
+      "id": "pay-04",
+      "category": "checkout",
+      "paraphrase": true,
+      "question": "Sounds good, let's split it into four",
+      "tool_ok": false,
+      "args_ok": false,
+      "why": "called ['get_financial_snapshot']",
+      "called": [
+        "get_financial_snapshot"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": true,
+      "ms": 13983,
+      "tokens": 0,
+      "reply": "Your balance is ₹1,10,000. Regular income is ₹65,000/month, next expected on 15 Nov 2026.\n• You spend about ₹36,818/month, including ₹2,500 on 6 subscription(s).\n• In 90 days your balance is projected at ₹1,68,391; the lowest point is ₹88,800 on 14 Nov 2026.\n\nTry asking: “What if I buy a ₹75,000 laptop?”, “What's the most I can spend this month?”, “What if I cancel three subscriptions?” or “What if my salary is delayed by 15 days?”"
+    },
+    {
+      "id": "fu-01",
+      "category": "follow_up",
+      "paraphrase": false,
+      "question": "And what if my salary is also 10 days late?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 11964,
+      "tokens": 4962,
+      "reply": "Cancelling three subscriptions and a 10‑day salary delay still keeps you well above your ₹20,000 safety buffer for the next 90 days.\n\n- **Monthly savings**: ₹1,933 /month (Cult.fit, Netflix, Amazon Prime).  \n- **90‑day balance**: baseline ₹168,391 → scenario ₹174,190 (↑ ₹5,799).  \n- **Minimum balance**: baseline ₹88,800 → scenario ₹83,600 (↓ ₹5,200).  \n- **Earliest safe date**: 2026‑11‑24, still comfortably above the ₹20,000 buffer."
+    },
+    {
+      "id": "fu-02",
+      "category": "follow_up",
+      "paraphrase": false,
+      "question": "What about 20 days?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": true,
+      "ms": 21205,
+      "tokens": 0,
+      "reply": "Changes: Delay every income payment by 20 days.\n• In 90 days your balance would be ₹1,03,391 instead of ₹1,68,391 (-₹65,000).\n• Lowest projected balance: ₹62,498 on 04 Dec 2026 (baseline ₹88,800)."
+    },
+    {
+      "id": "fu-03",
+      "category": "follow_up",
+      "paraphrase": false,
+      "question": "What about ₹60,000?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": true,
+      "ms": 16021,
+      "tokens": 0,
+      "reply": "Pay in full today. You can afford it.\n• Recommended: Pay in full today. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: lowest balance ₹28,800 on 14 Nov 2026, above your ₹20,000 buffer.\n• Wait until 15 Nov: lowest balance ₹48,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay in 4: lowest balance ₹63,460 on 14 Dec 2026, above your ₹20,000 buffer.\n• PayPal Pay Monthly · 12 mo: lowest balance ₹1,02,902 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹6,693 extra."
+    },
+    {
+      "id": "fu-04",
+      "category": "follow_up",
+      "paraphrase": true,
+      "question": "Make it the ₹999 premium tier instead",
+      "tool_ok": true,
+      "args_ok": false,
+      "why": "change types ['add_subscription', 'purchase'], expected ['add_subscription']",
+      "called": [
+        "simulate_scenario"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": true,
+      "ms": 12258,
+      "tokens": 0,
+      "reply": "Changes: Subscribe to New subscription at ₹499/month, starting today; Premium: ₹999 on 03 Nov 2026.\n• In 90 days your balance would be ₹1,65,895 instead of ₹1,68,391 (-₹2,496).\n• Lowest projected balance: ₹87,302 on 14 Nov 2026 (baseline ₹88,800).\n• Ongoing effect: -₹499 per month, -₹5,988 per year."
     }
   ]
 }

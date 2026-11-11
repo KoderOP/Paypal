@@ -36,8 +36,20 @@ DEMO_FILES = [
 PERSONA = {"paypal_freelancer": "freelancer"}
 
 
+SAMPLE_PREFIX = "SAMPLE"  # every id/reference in a FINORA sample file starts with this, so uploads are recognisable
+
+
 def _ref(t: NormalizedTransaction, n: int = 12) -> str:
-    return hashlib.sha1(t.external_id.encode()).hexdigest().upper()[:n]
+    return SAMPLE_PREFIX + hashlib.sha1(t.external_id.encode()).hexdigest().upper()[:n - len(SAMPLE_PREFIX)]
+
+
+def is_sample_content(content: str, filename: str | None = None) -> bool:
+    """True for FINORA's own synthetic files: the demo filename, or ids/references carrying the SAMPLE prefix."""
+    if filename and filename.lower().startswith("finora-demo-"):
+        return True
+    lines = [l for l in content.splitlines()[1:] if l.strip()]
+    marked = sum(1 for l in lines if f",{SAMPLE_PREFIX}" in l)
+    return bool(lines) and marked / len(lines) >= 0.9
 
 
 def _write(header: list[str], rows: list[list[str]]) -> str:

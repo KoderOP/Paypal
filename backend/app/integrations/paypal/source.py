@@ -64,7 +64,8 @@ class PayPalSource:
                        "Sync, checkout, Pay Later, subscriptions and sign-in all work with synthetic data and no real "
                        "money. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to backend/.env to use your real PayPal.")
         elif self.configured:
-            message = f"Connected to the PayPal {self.environment} REST API (read-only sync)."
+            message = (f"PayPal {self.environment} credentials are set. Use “Test connection” to verify them with PayPal; "
+                       "Transaction Search also needs that feature enabled on the REST app.")
         else:
             message = ("Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to the backend .env to enable live API sync. "
                        "You can import a PayPal Activity report (CSV) right now.")

@@ -17,10 +17,13 @@ def list_transactions(
     direction: str | None = Query(None, pattern="^(in|out)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
+    origin: str | None = Query(None, pattern="^(sample|user_import|paypal_api|paypal_checkout|unknown)$"),
     db: Session = Depends(get_db),
 ):
     user = repo.get_primary_user(db)
-    q = select(Transaction).join(Account).where(Account.user_id == user.id)
+    q = select(Transaction, Account.origin, Account.environment).join(Account).where(Account.user_id == user.id)
+    if origin:
+        q = q.where(Account.origin == origin)
     if search:
         like = f"%{search.lower()}%"
         q = q.where(or_(func.lower(Transaction.description).like(like), func.lower(Transaction.merchant).like(like)))
@@ -31,10 +34,11 @@ def list_transactions(
     elif direction == "out":
         q = q.where(Transaction.amount < 0)
     count = db.scalar(select(func.count()).select_from(q.subquery())) or 0
-    rows = db.scalars(q.order_by(Transaction.posted_on.desc(), Transaction.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
+    rows = db.execute(q.order_by(Transaction.posted_on.desc(), Transaction.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
     return TransactionPage(
         items=[TransactionOut(id=r.id, posted_on=r.posted_on, description=r.description, merchant=r.merchant,
-                              category=r.category, amount=r.amount, source=r.source) for r in rows],
+                              category=r.category, amount=r.amount, source=r.source, origin=o, environment=e,
+                              origin_label=repo.origin_label(o, e)) for r, o, e in rows],
         total=count, page=page, page_size=page_size,
     )
 

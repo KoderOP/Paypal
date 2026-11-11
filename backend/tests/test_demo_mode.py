@@ -56,7 +56,7 @@ def test_pay_later_checkout_works_without_paypal(client):
                                                       "acknowledged": True}).json()
     _approve_and_return(client, order, "paylater")
     done = client.post(f"/api/checkout/orders/{order['id']}/capture", json={"confirm": True}).json()
-    assert done["snapshot"]["recorded"] == {"kind": "obligations", "count": 4}
+    assert done["snapshot"]["recorded"] == {"kind": "obligations", "count": 4, "simulated_schedule": True}
     for o in client.get("/api/obligations").json():
         if o["category"] == "Pay Later":
             client.delete(f"/api/obligations/{o['id']}")

@@ -25,6 +25,7 @@ from app.integrations.paypal.orders import capture_order, create_order, get_orde
 from app.integrations.paypal.source import PayPalApiError, PayPalNotConfigured
 from app.schemas.api import CheckoutConfirm, CheckoutCreate, CheckoutOut, ObligationOut, PlanPurchase
 from app.services import repository as repo
+from app.services.import_service import account_name
 from app.services.planning import payment_comparison
 
 router = APIRouter(prefix="/checkout", tags=["checkout"])
@@ -174,7 +175,8 @@ def capture(order_id: int, body: CheckoutConfirm, db: Session = Depends(get_db),
         db.commit()
         raise HTTPException(502, order.error)
     order.status, order.capture_id, order.error = "captured", res["capture_id"], None
-    order.snapshot = {**(order.snapshot or {}), "recorded": _record_in_twin(db, user, order)}
+    order.snapshot = {**(order.snapshot or {}), "captured_on": repo.today().isoformat(),
+                      "recorded": _record_in_twin(db, user, order)}
     db.commit()
     return _out(order)
 
@@ -203,22 +205,33 @@ def plan_purchase(body: PlanPurchase, db: Session = Depends(get_db)):
 
 
 def _record_in_twin(db: Session, user: User, order: CheckoutOrder) -> dict:
+    """Put a captured payment into the twin, in the PayPal checkout account for this environment (never merged into
+    sample or imported data), and drop any earlier "Planned:" entry for the same purchase so it isn't counted twice."""
     today = repo.today()
+    env = get_settings().paypal_environment
+    planned = db.scalars(select(Obligation).where(Obligation.user_id == user.id, Obligation.title == f"Planned: {order.label}",
+                                                  Obligation.amount == order.amount)).all()
+    for o in planned:
+        db.delete(o)
+    replaced = {"replaced_planned": len(planned)} if planned else {}
     if order.funding == "paylater":
         payments = (order.snapshot or {}).get("payments", [])
         n = len(payments)
         for i, p in enumerate(payments, 1):
             db.add(Obligation(user_id=user.id, title=f"{order.label} · Pay Later {i}/{n}", category="Pay Later",
                               amount=Decimal(p["amount"]), due_on=date.fromisoformat(p["on"]),
-                              notes=f"PayPal order {order.paypal_order_id}. Edit if PayPal's final terms differ."))
-        return {"kind": "obligations", "count": n}
-    account = db.scalars(select(Account).where(Account.user_id == user.id, Account.source == "paypal")).first()
+                              notes=f"Simulated schedule from FINORA's illustrative terms for PayPal order "
+                                    f"{order.paypal_order_id} ({env}). PayPal sets the real terms; edit if they differ."))
+        return {"kind": "obligations", "count": n, "simulated_schedule": True, **replaced}
+    account = db.scalars(select(Account).where(Account.user_id == user.id, Account.origin == "paypal_checkout",
+                                               Account.environment == env)).first()
     if account is None:
-        account = Account(user_id=user.id, name="PayPal account", institution="paypal", opening_balance=0,
-                          opening_date=today - timedelta(days=1), source="paypal")
+        account = Account(user_id=user.id, name=account_name("paypal", "paypal_checkout", env), institution="paypal",
+                          opening_balance=0, opening_date=today - timedelta(days=1), source="paypal",
+                          origin="paypal_checkout", environment=env)
         db.add(account)
         db.flush()
     db.add(Transaction(account_id=account.id, posted_on=today, description=f"PayPal checkout · {order.label}",
                        merchant=order.label[:120], category="Shopping", amount=-order.amount, source="paypal",
                        external_id=f"pp-{order.capture_id}"))
-    return {"kind": "transaction", "external_id": f"pp-{order.capture_id}"}
+    return {"kind": "transaction", "external_id": f"pp-{order.capture_id}", **replaced}

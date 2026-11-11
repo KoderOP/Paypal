@@ -36,7 +36,8 @@ def setup_demo(persona_file: str = "paypal_activity"):
     _, content, _ = render(persona_file, EVAL_TODAY)
     parsed = parse_file(content, "auto")
     source = FORMAT_SOURCE[parsed.format]
-    store_transactions(db, user, source, parsed.transactions, parsed.opening_balance, True, parsed.format)
+    store_transactions(db, user, source, parsed.transactions, parsed.opening_balance, True, parsed.format,
+                       origin="sample")
     return db, user
 
 

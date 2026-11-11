@@ -8,7 +8,7 @@ from app.api import (
     stress, subscriptions, transactions,
 )
 from app.core.config import get_settings
-from app.core.database import Base, SessionLocal, engine
+from app.core.database import Base, SessionLocal, engine, ensure_columns
 from app.core.limits import SECURITY_HEADERS
 from app.services.seed import ensure_user
 
@@ -16,6 +16,7 @@ from app.services.seed import ensure_user
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
+    ensure_columns(engine)
     with SessionLocal() as db:
         ensure_user(db)
     yield

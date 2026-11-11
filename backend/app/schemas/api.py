@@ -33,6 +33,7 @@ class DashboardResponse(BaseModel):
     as_of: date
     user_name: str
     data_source: str
+    provenance: list[ProvenanceOut] = []
     kpis: Kpis
     health: list[HealthIndicator]
     history: list[BalancePoint]
@@ -57,7 +58,20 @@ class TransactionOut(BaseModel):
     merchant: str
     category: str
     amount: Money
-    source: str
+    source: str  # format family (paypal | bank_statement | csv), not provenance
+    origin: str  # provenance: sample | user_import | paypal_api | paypal_checkout | unknown
+    environment: str | None = None  # sandbox | live | demo for PayPal origins
+    origin_label: str
+
+
+class ProvenanceOut(BaseModel):
+    origin: str
+    environment: str | None
+    label: str
+    count: int
+    first: date | None
+    last: date | None
+    synthetic: bool
 
 
 class TransactionPage(BaseModel):
@@ -113,6 +127,8 @@ class StatusOut(BaseModel):
     user_name: str
     data_source: str | None
     transaction_count: int
+    provenance: list[ProvenanceOut] = []
+    sample_count: int = 0  # transactions that are fictional (sample data, or PayPal demo mode)
 
 
 class DemoFileOut(BaseModel):
@@ -122,11 +138,14 @@ class DemoFileOut(BaseModel):
     filename: str
     description: str
     suggested_opening_balance: Money | None
+    rows: int = 0  # transactions in the file (all synthetic)
 
 
 class ImportResult(BaseModel):
     format: str
     source: str
+    origin: str = "user_import"
+    environment: str | None = None
     rows: int
     imported: int
     skipped_duplicates: int

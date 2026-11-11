@@ -37,10 +37,13 @@ def test_dashboard(client):
 
 def test_paypal_overview_demo_mode(client):
     p = client.get("/api/integrations/paypal").json()
-    assert p["linked"] and p["transaction_count"] > 100 and p["configured"] and p["demo"] and p["environment"] == "demo"
-    # Demo Transaction Search returns the same transaction ids as the demo CSV, so a sync de-duplicates.
+    assert p["configured"] and p["demo"] and p["environment"] == "demo"
+    # The loaded file is FINORA's synthetic sample in PayPal Activity *format*: it must not count as PayPal records.
+    assert not p["linked"] and p["transaction_count"] == 0 and p["sample_transactions"] > 100
+    # Demo Transaction Search returns the same transaction ids as the sample CSV, so a sync de-duplicates (no doubling).
     r = client.post("/api/integrations/paypal/sync", json={"days": 30})
     assert r.status_code == 200 and r.json()["imported"] == 0 and r.json()["skipped_duplicates"] > 0
+    assert client.get("/api/integrations/paypal").json()["last_sync"]["outcome"] == "ok"
 
 
 def test_paypal_overview_without_demo(client, demo_off):

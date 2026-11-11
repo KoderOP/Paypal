@@ -7,6 +7,7 @@ Each tool returns:
            fallback when an LLM draft fails the figure guardrail
 """
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -154,6 +155,27 @@ def _snapshot(db: Session, user: User) -> ToolOutcome:
     return ToolOutcome("get_financial_snapshot", {}, True, summary, {"kind": "snapshot", **summary}, lines)
 
 
+def _already_paid(db: Session, user: User, label: str) -> dict | None:
+    """A captured FINORA checkout for the same item that is still in the twin, so a new question about it isn't
+    mistaken for the same purchase (it is simulated as an additional one)."""
+    from sqlalchemy import func as sa_func, select as sa_select
+    from app.data.models import CheckoutOrder
+    rows = db.scalars(sa_select(CheckoutOrder).where(CheckoutOrder.user_id == user.id, CheckoutOrder.status == "captured",
+                                                     sa_func.lower(CheckoutOrder.label) == label.lower())
+                      .order_by(CheckoutOrder.id.desc())).all()
+    o = next((r for r in rows if not ((r.snapshot or {}).get("recorded") or {}).get("cleared_from_twin")), None)
+    if o is None:
+        return None
+    return {"label": o.label, "amount": _f(o.amount), "paid_on": (o.snapshot or {}).get("captured_on"),
+            "capture_id": o.capture_id, "status": "captured"}
+
+
+def _already_paid_line(p: dict) -> str:
+    when = f" on {fmt_date(date.fromisoformat(p['paid_on']))}" if p.get("paid_on") else ""
+    return (f"Note: you already paid for {p['label']} ({inr(Decimal(str(p['amount'])))}) through PayPal checkout{when}. "
+            "That payment is already in your balance; this simulates buying another one.")
+
+
 def _payment_options(db: Session, user: User, args: dict) -> ToolOutcome:
     amount = Decimal(str(args["amount"]))
     label = (args.get("label") or "Purchase").strip()[:80] or "Purchase"
@@ -171,8 +193,12 @@ def _payment_options(db: Session, user: User, args: dict) -> ToolOutcome:
         "terms_note": c.terms_note,
     }
     card = {"kind": "payment_options", **c.model_dump(mode="json")}
-    return ToolOutcome("compare_payment_options", {"amount": float(amount), "label": label}, True, summary, card,
-                       [c.recommendation.headline.rstrip(".") + "."] + c.recommendation.explanation)
+    lines = [c.recommendation.headline.rstrip(".") + "."] + c.recommendation.explanation
+    paid = _already_paid(db, user, label)
+    if paid:
+        summary["already_paid"] = paid
+        lines.insert(0, _already_paid_line(paid))
+    return ToolOutcome("compare_payment_options", {"amount": float(amount), "label": label}, True, summary, card, lines)
 
 
 def _affordability(db: Session, user: User, args: dict) -> ToolOutcome:
@@ -306,6 +332,10 @@ def _checkout_proposal(db: Session, user: User, args: dict) -> ToolOutcome:
     lines.append("Review the details and confirm below; you'll then approve the payment on PayPal.")
     if note:
         lines.append(note)
+    paid = _already_paid(db, user, label)
+    if paid:
+        summary["already_paid"] = paid
+        lines.insert(0, _already_paid_line(paid))
     card = {"kind": "checkout_proposal", **summary, "terms_note": c.terms_note if option.funding == "paylater" else None}
     return ToolOutcome("prepare_paypal_checkout", {"amount": float(amount), "label": label, "option_id": option.id},
                        True, summary, card, lines)
