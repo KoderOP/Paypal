@@ -6,6 +6,7 @@ import pytest
 
 _db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 os.environ["DATABASE_URL"] = f"sqlite:///{_db.name}"
+os.environ["FINORA_IGNORE_ENV_FILES"] = "1"  # never read the developer's .env (keys, sandbox currency, …)
 os.environ["CHAT_RATE_LIMIT_PER_MINUTE"] = "0"  # tests call the chat endpoint many times; test_agent enables it explicitly
 for _k in ("GROQ_API_KEY", "OPENAI_API_KEY", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"):
     os.environ[_k] = ""  # overrides backend/.env too: never let a developer's real keys reach the test suite

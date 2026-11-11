@@ -251,3 +251,11 @@ def test_long_rate_limit_switches_to_fallback_model_immediately():
     c = LlmClient(groq(groq_model="big", groq_fallback_model="small"), httpx.MockTransport(handler), sleep=slept.append)
     c.complete([], [])
     assert [s["model"] for s in seen] == ["big", "small"] and slept == [] and "rate-limited" in c.calls[0].notes[0]
+
+
+@pytest.mark.parametrize("chip,option", [("Go ahead with PayPal Pay in 4", "pay_in_4"), ("Pay in full now with PayPal", "pay_now")])
+def test_ui_follow_up_chips_draft_a_checkout_without_an_llm(client, chip, option):
+    # These exact strings are the one-tap buttons in frontend/src/pages/Assistant.tsx (PAY_FOLLOWUPS).
+    ctx = {"tool": "compare_payment_options", "arguments": {"amount": 75000, "label": "Laptop"}}
+    call = ask(client, chip, ctx)["tool_calls"][0]
+    assert call["tool"] == "prepare_paypal_checkout" and call["arguments"]["option_id"] == option

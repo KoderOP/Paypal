@@ -1,5 +1,6 @@
 """Environment-based configuration. Never hardcode secrets; read them from env / .env."""
 from decimal import Decimal
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -11,7 +12,8 @@ DEMO_PAYPAL_HOST = "paypal-demo.finora.local"  # never resolved: the demo is ser
 
 _BACKEND = Path(__file__).resolve().parents[2]
 # Repo-root .env (shared with docker-compose) first, then backend/.env; later files win, real env vars win over both.
-ENV_FILES = (_BACKEND.parent / ".env", _BACKEND / ".env")
+# FINORA_IGNORE_ENV_FILES=1 (set by the test suite) reads real environment variables only.
+ENV_FILES = () if os.environ.get("FINORA_IGNORE_ENV_FILES") else (_BACKEND.parent / ".env", _BACKEND / ".env")
 
 
 class Settings(BaseSettings):

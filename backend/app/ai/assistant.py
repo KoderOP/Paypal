@@ -39,7 +39,8 @@ SYSTEM = """You are FINORA, a pre-payment financial copilot. The user's money da
 
 Grounding rules (strict, checked automatically):
 - Every amount, percentage and date you write MUST appear in a tool result from this conversation. Never compute, estimate, add up or invent numbers yourself. If you need a number, call a tool.
-- Copy figures as the tool gives them (you may round to the nearest rupee and write ₹75,000 / ₹1.2 lakh).
+- Copy figures as the tool gives them (you may round to the nearest rupee and write ₹75,000 / ₹1.2 lakh). Do not subtract, add or compare amounts yourself: differences you may need (e.g. min_balance_change, room_above_buffer_if_bought_today, extra_cost) are already in the results. If a number isn't there, leave it out.
+- "Safety buffer" is the minimum balance the user wants to keep (e.g. ₹20,000). "Room above the buffer" is how much more could be spent; don't call that the buffer.
 
 Which tool:
 - "Can I afford / should I buy X" → compare_payment_options (pay now vs wait vs PayPal Pay Later).
@@ -191,7 +192,7 @@ def _chat_llm(messages: list[dict], db: Session, user: User, llm: LlmClient, con
         "The AI didn't produce a usable answer, so this was composed directly from the computed results."
     reply = _rules_reply(outcomes)
     return {**base, "reply": reply, "guardrail": "replaced", "grounding": guardrail.check_claims(reply, _payloads(outcomes)),
-            "rejected_grounding": grounding, "note": reason, "built_on": built_on, "context": _context(outcomes),
+            "rejected_grounding": grounding, "rejected_draft": draft[:1500] or None, "note": reason, "built_on": built_on, "context": _context(outcomes),
             "tool_calls": [_public(o) for o in outcomes]}
 
 

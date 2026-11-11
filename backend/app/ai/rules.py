@@ -110,7 +110,8 @@ def _fx_change(t: str, pct: Decimal) -> dict | None:
 
 
 CHECKOUT = re.compile(r"\b(go ahead|proceed|check ?out|pay for (it|this|that)|buy it|let'?s do it|place (the|an) order|"
-                      r"pay (it )?(now|with paypal|via paypal|through paypal)|confirm (the )?(purchase|payment)|"
+                      r"pay (it )?(in full )?(now|with paypal|via paypal|through paypal)|pay (it )?in full|"
+                      r"confirm (the )?(purchase|payment)|"
                       r"(use|with|via|choose|pick|go with) (paypal )?(pay in 4|pay later|pay monthly))\b")
 
 

@@ -186,6 +186,10 @@ def _affordability(db: Session, user: User, args: dict) -> ToolOutcome:
         "safety_buffer": _f(r.assumptions.safety_buffer), "search_days": r.search_days,
         "earliest": r.earliest.model_dump(mode="json") if r.earliest else None,
     }
+    if amount is not None:
+        # max_safe_today = lowest projected balance − buffer, so these follow exactly (to the rupee).
+        summary["room_above_buffer_if_bought_today"] = _f(r.max_safe_today - amount)
+        summary["lowest_projected_balance_if_bought_today"] = _f(r.max_safe_today + r.assumptions.safety_buffer - amount)
     card = {"kind": "affordability", **r.model_dump(mode="json")}
     return ToolOutcome("find_affordability", {k: v for k, v in {"amount": _f(amount), "search_days": days}.items() if v},
                        True, summary, card, r.explanation)
@@ -232,6 +236,9 @@ def _scenario(db: Session, user: User, args: dict) -> ToolOutcome:
         "monthly_effect": _f(r.monthly_effect),
         "impacts": [i.model_dump(mode="json") for i in r.impacts],
         "baseline_min_balance": _f(r.baseline.min_balance), "scenario_min_balance": _f(r.simulated.min_balance),
+        # Differences people ask about, computed here so the model quotes them instead of doing arithmetic.
+        "min_balance_change": _f(r.simulated.min_balance - r.baseline.min_balance),
+        "end_balance_change": _f(r.simulated.end_balance - r.baseline.end_balance),
         "scenario_min_date": r.simulated.min_balance_date.isoformat(),
         "baseline_end_balance": _f(r.baseline.end_balance), "scenario_end_balance": _f(r.simulated.end_balance),
         "risks": [x.model_dump() for x in r.risks], "safety_buffer": _f(r.assumptions.safety_buffer),
