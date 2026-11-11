@@ -422,3 +422,30 @@ def test_assistant_llm_invented_figure_is_replaced(client):
         app.dependency_overrides.pop(get_llm, None)
     assert body["guardrail"] == "replaced" and "91,234" not in body["reply"] and "₹91,234" in body["note"]
     assert body["reply"].startswith(body["tool_calls"][0]["card"]["recommendation"]["headline"])
+
+
+# ---- Cross-currency checkout (USD sandbox, INR profile) --------------------------------------------------
+def _start(client, amount=75000):
+    return client.post("/api/checkout/orders", json={"amount": amount, "label": "Laptop", "option_id": "pay_now",
+                                                     "acknowledged": True})
+
+
+def test_cross_currency_checkout_is_refused_without_a_rate(client, fake_pp, monkeypatch):
+    monkeypatch.setattr(get_settings(), "paypal_checkout_currency", "USD")
+    monkeypatch.setattr(get_settings(), "paypal_checkout_fx_rate", None)
+    r = _start(client)
+    assert r.status_code == 400 and "PAYPAL_CHECKOUT_FX_RATE" in r.json()["detail"]
+    assert not any(p == "/v2/checkout/orders" for _, p in fake_pp.calls)  # nothing sent to PayPal
+
+
+def test_cross_currency_checkout_converts_the_amount(client, fake_pp, monkeypatch):
+    from decimal import Decimal
+    monkeypatch.setattr(get_settings(), "paypal_checkout_currency", "USD")
+    monkeypatch.setattr(get_settings(), "paypal_checkout_fx_rate", Decimal("84"))
+    r = _start(client)
+    assert r.status_code == 201, r.text
+    body = r.json()
+    sent = next(o["amount"] for o in fake_pp.orders.values())
+    assert sent == {"currency_code": "USD", "value": "892.86"}  # ₹75,000 / 84, not $75,000
+    assert body["amount"] == 75000 and body["currency"] == "INR"  # the twin keeps the home amount
+    assert body["snapshot"]["paypal_charge"] == {"currency": "USD", "amount": "892.86", "rate": "84"}

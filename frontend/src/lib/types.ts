@@ -296,6 +296,7 @@ export interface CheckoutOrder {
   approve_url: string | null
   capture_id: string | null
   snapshot: {
+    paypal_charge?: { currency: string; amount: string; rate: string | null }
     option_name?: string; summary?: string; safe?: boolean; recommended?: boolean
     min_balance?: string; min_balance_date?: ISODate; total_paid?: string; extra_cost?: string; apr?: string
     payments?: { on: ISODate; amount: string }[]; safety_buffer?: string; terms_note?: string | null

@@ -1,7 +1,7 @@
 """Agent benchmark: does the agent pick the right engine tool, with the right arguments, and stay grounded?
 
     python -m evals.agent_eval --mode rules           # deterministic planner, offline, no key
-    GROQ_API_KEY=... python -m evals.agent_eval --mode llm   # live Groq tool calling
+    GROQ_API_KEY=... python -m evals.agent_eval --mode llm --tpm 8000   # live Groq, paced for the free tier
 
 Metrics (per category and overall):
   tool_accuracy      the expected tool was called
@@ -107,6 +107,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["rules", "llm"], default="rules")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--tpm", type=int, default=0,
+                    help="pace LLM runs to this tokens-per-minute budget (e.g. 8000 on Groq's free tier)")
     args = ap.parse_args()
 
     from app.ai.llm import LlmClient
@@ -123,12 +125,14 @@ def main():
     for c in cases:
         r = run_case(c, db, user, factory)
         rows.append(r)
+        if args.tpm and r["tokens"]:
+            time.sleep(max(0.0, r["tokens"] / args.tpm * 60 - r["ms"] / 1000) + 1)
         flag = "✓" if r["args_ok"] else ("~" if r["tool_ok"] else "✗")
         print(f"{flag} {r['id']:<8} {r['ms']:>6} ms  {'grounded' if r['grounded'] else 'UNGROUNDED':<10} {r['why']}")
     out = {"benchmark": "agent", "mode": args.mode,
            "provider": s.llm_settings["provider"] if args.mode == "llm" else None,
            "model": s.llm_settings["models"][0] if args.mode == "llm" else None,
-           **run_info(), "summary": summarize(rows), "cases": rows}
+           **run_info(), "paced_tpm": args.tpm or None, "summary": summarize(rows), "cases": rows}
     RESULTS.mkdir(exist_ok=True)
     path = RESULTS / f"agent_{args.mode}.json"
     path.write_text(json.dumps(out, indent=2, ensure_ascii=False))

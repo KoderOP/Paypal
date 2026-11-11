@@ -1,6 +1,7 @@
 """Environment-based configuration. Never hardcode secrets; read them from env / .env."""
 from decimal import Decimal
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,8 +9,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 DEMO_PAYPAL_HOST = "paypal-demo.finora.local"  # never resolved: the demo is served in-process
 
 
+_BACKEND = Path(__file__).resolve().parents[2]
+# Repo-root .env (shared with docker-compose) first, then backend/.env; later files win, real env vars win over both.
+ENV_FILES = (_BACKEND.parent / ".env", _BACKEND / ".env")
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "FINORA API"
     environment: str = "development"
@@ -41,7 +47,7 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     groq_model: str = "openai/gpt-oss-120b"
     # Tried when the primary model is unavailable (decommissioned, not enabled, over capacity).
-    groq_fallback_model: str | None = "llama-3.3-70b-versatile"
+    groq_fallback_model: str | None = "openai/gpt-oss-20b"
     groq_base_url: str = "https://api.groq.com/openai/v1"
     llm_timeout_seconds: float = 30.0
     chat_rate_limit_per_minute: int = 20  # per client address; 0 disables
@@ -56,6 +62,10 @@ class Settings(BaseSettings):
     paypal_base_url: str = "https://api-m.sandbox.paypal.com"
     # Currency for Orders API checkouts. Empty = the user's profile currency (INR by default).
     paypal_checkout_currency: str | None = None
+    # Needed when the checkout currency differs from the profile currency (e.g. USD sandbox, INR profile):
+    # home-currency units per 1 checkout unit, e.g. 84 (INR per USD). FINORA never fetches market rates;
+    # without this, a cross-currency checkout is refused rather than sending ₹75,000 as $75,000.
+    paypal_checkout_fx_rate: Decimal | None = None
     # Without PayPal credentials, use FINORA's built-in PayPal demo (a local simulation of the REST
     # API: orders, sign-in, subscriptions, transaction search). Labelled as a demo everywhere.
     paypal_demo_mode: bool = True

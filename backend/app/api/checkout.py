@@ -69,13 +69,17 @@ def start_checkout(body: CheckoutCreate, db: Session = Depends(get_db), pp: PayP
         "terms_note": cmp.terms_note if option.funding == "paylater" else None,
     }
     s = get_settings()
+    charge_currency, charge_amount = _charge(cmp.amount, user.currency)
+    snapshot["paypal_charge"] = {"currency": charge_currency, "amount": str(charge_amount),
+                                 "rate": str(s.paypal_checkout_fx_rate) if charge_currency != user.currency.upper() else None}
+    # The order keeps the home-currency amount (the twin and the UI work in it); PayPal is charged `paypal_charge`.
     order = CheckoutOrder(user_id=user.id, option_id=option.id, funding=option.funding or "paypal", label=body.label,
-                          amount=cmp.amount, currency=(s.paypal_checkout_currency or user.currency).upper(),
+                          amount=cmp.amount, currency=user.currency.upper(),
                           status="created", request_id=new_request_id(), snapshot=snapshot)
     db.add(order)
     db.commit()  # record the intent before calling PayPal; also releases SQLite's write lock for the call
     try:
-        res = create_order(pp, amount=order.amount, currency=order.currency, label=order.label,
+        res = create_order(pp, amount=charge_amount, currency=charge_currency, label=order.label,
                            reference=f"finora-{order.id}", return_url=f"{s.public_api_url}/checkout/return",
                            cancel_url=f"{s.public_api_url}/checkout/cancel", request_id=order.request_id)
     except (PayPalApiError, PayPalNotConfigured) as exc:
@@ -87,6 +91,19 @@ def start_checkout(body: CheckoutCreate, db: Session = Depends(get_db), pp: PayP
     order.error = None if res["approve_url"] else "PayPal did not return an approval link."
     db.commit()
     return _out(order)
+
+
+def _charge(amount: Decimal, home: str) -> tuple[str, Decimal]:
+    """(currency, amount) to charge at PayPal. Cross-currency needs an explicit PAYPAL_CHECKOUT_FX_RATE."""
+    s = get_settings()
+    cur = (s.paypal_checkout_currency or home).upper()
+    if cur == home.upper():
+        return cur, amount
+    if not s.paypal_checkout_fx_rate or s.paypal_checkout_fx_rate <= 0:
+        raise HTTPException(400, f"Checkout currency is {cur} but your profile is in {home.upper()}. Set "
+                                 f"PAYPAL_CHECKOUT_FX_RATE ({home.upper()} per 1 {cur}) so the amount is converted, "
+                                 "or clear PAYPAL_CHECKOUT_CURRENCY.")
+    return cur, (amount / s.paypal_checkout_fx_rate).quantize(Decimal("0.01"))
 
 
 @router.get("/return", include_in_schema=False)

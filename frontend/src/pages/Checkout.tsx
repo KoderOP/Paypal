@@ -51,6 +51,12 @@ export default function Checkout() {
             <span className="text-sm text-navy-500">{o.snapshot.option_name ?? o.option_id}</span>
             <span className="tabular text-2xl font-semibold text-navy-900">{inr(o.amount)}</span>
           </div>
+          {o.snapshot.paypal_charge?.rate && (
+            <p className="mt-1 text-right text-[13px] font-medium text-[#003087]">
+              Charged at PayPal: {o.snapshot.paypal_charge.currency} {Number(o.snapshot.paypal_charge.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              <span className="font-normal text-navy-500"> · your rate ₹{o.snapshot.paypal_charge.rate} per {o.snapshot.paypal_charge.currency}</span>
+            </p>
+          )}
           {o.snapshot.summary && <p className="mt-1 text-[13px] text-navy-500">{o.snapshot.summary}</p>}
           {o.snapshot.min_balance && o.snapshot.min_balance_date && (
             <p className={`mt-3 flex gap-2 text-[13px] ${o.snapshot.safe ? 'text-brand-700' : 'text-red-700'}`}>

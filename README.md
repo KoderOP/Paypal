@@ -30,7 +30,7 @@ the agent the laptop question. With no `.env`, everything works offline:
 
 | Component | Without keys | With keys (`backend/.env`, see `.env.example`) |
 |---|---|---|
-| Agent | Deterministic planner, same tools, exact figures | **Groq tool calling** (`GROQ_API_KEY`), default `openai/gpt-oss-120b`, fallback `llama-3.3-70b-versatile` |
+| Agent | Deterministic planner, same tools, exact figures | **Groq tool calling** (`GROQ_API_KEY`), default `openai/gpt-oss-120b`, fallback `openai/gpt-oss-20b` |
 | PayPal | Built-in **PayPal demo mode**: an in-process stand-in for the REST API, clearly labelled, no money moves | **PayPal Sandbox** (`PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`): same client code |
 
 Before a live demo, verify the key and model with `cd backend && python -m evals.check_groq`.
@@ -52,17 +52,33 @@ Docker: `docker compose up --build` (Postgres 16 + backend + frontend).
 
 ## Evidence (`cd backend && python -m evals.run_all`)
 
+### Forecast backtest on synthetic histories
+
+This measures whether the forecast supports the purchase decision. It is **not** a measure of accuracy on real users.
+
+| | |
+|---|---|
+| **Dataset** | Synthetic only: 30 seeds × 2 personas (salaried; USD freelancer paid via PayPal) = 60 six-month histories, from the same generator family as the demo. A *noise-injected* condition adds late income (−3…+4 days), 10% skipped bills, random one-off expenses and ±25% monthly variable spend. |
+| **Method** | Walk-forward: 5 cut-offs per history. Each model sees only transactions before the cut-off and forecasts 30 days of daily balances. *Decision*: is a purchase of 10–150% of monthly income, made on the cut-off day, safe above the ₹20,000 buffer? *False-safe*: predicted safe, actually breached. |
+| **Baselines** | Flat balance · linear drift (90-day average daily net flow) · seasonal naive (replay the last 30 days, a strong baseline for monthly cash flow). |
+| **Limitations** | The generator has the monthly structure the twin looks for, which favours it; real histories are messier. Single deterministic path, 30-day horizon. Run it on a real export with `python -m evals.forecast_backtest --file <PayPal export.csv>`. |
+
+| Noise-injected condition (300 forecasts per model) | Decision accuracy | False-safe | Daily balance error (% of income) |
+|---|---|---|---|
+| FINORA twin | **95.0%** | **3.5%** | **15.6%** |
+| Seasonal naive | 92.6% | 4.6% | 20.0% |
+| Linear drift | 76.6% | 23.4% | 32.3% |
+| Flat balance | 77.2% | 22.8% | 35.2% |
+
+On clean synthetic histories the twin reaches 96.8% (seasonal naive 93.2%). Full tables: [docs/EVALUATION.md](docs/EVALUATION.md).
+
+### AI grounding and agent
+
 | Evaluation | Result | Baseline / ablation |
 |---|---|---|
-| **Forecast backtest**: purchase-safety decisions, walk-forward, 60 noise-injected histories × 5 cut-offs | **95.0%** correct, **3.5%** false-safe | Seasonal-naive 92.6% / 4.6%; linear drift 76.6% / 23.4% |
-| Forecast backtest: daily balance error (same data) | **15.6%** of monthly income | Seasonal-naive 20.0%; flat 35.2% |
-| **Guardrail red-team**: 262 corrupted drafts, 154 faithful drafts | **97.7%** caught, **0%** false rejections | Flat 1% tolerance: 76.3% caught (digit swaps: 29.6% vs 100%) |
-| **Agent benchmark**: 40 questions, deterministic planner | Tool 85% · args 77.5% · **grounded 100%** | 100% on wording it was written for, 57% on held-out paraphrases (the gap the LLM closes) |
-| Agent benchmark, Groq live | `python -m evals.agent_eval --mode llm` | Not run in this build (no key available while building). Never estimated |
-
-The backtest uses synthetic data, so it shows the method works on regular monthly cash flow, not real-world accuracy.
-Run `python -m evals.forecast_backtest --file <your PayPal export.csv>` for that. Full method and caveats are in
-[docs/EVALUATION.md](docs/EVALUATION.md).
+| **Guardrail red-team**: 262 seeded corrupted drafts, 154 faithful drafts | **97.7%** caught, **0%** false rejections | Flat 1% tolerance: 76.3% caught (digit swaps: 29.6% vs 100%) |
+| **Agent benchmark**: 40 questions, deterministic planner (offline) | Tool 85% · args 77.5% · **grounded 100%** | 100% on wording it was written for, 57% on held-out paraphrases |
+<!-- GROQ_ROW -->
 
 The evaluations found and fixed four guardrail bugs, including a JSON-escaping bug that turned "₹12,469" into 912469
 and a flat tolerance that let digit transpositions through. Regression tests cover each one.

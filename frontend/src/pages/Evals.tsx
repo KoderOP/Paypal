@@ -110,8 +110,20 @@ export default function Evals() {
 
       <div className="space-y-5">
         <Card>
-          <CardHeader icon={<TrendingUp className="h-4 w-4" />} title="1 · Forecast backtest: is the purchase safe?"
+          <CardHeader icon={<TrendingUp className="h-4 w-4" />} title="1 · Forecast backtest on synthetic histories: is the purchase safe?"
             subtitle={`Walk-forward: the twin sees only history before each cut-off, forecasts ${d.backtest?.horizon_days ?? 30} days, and is scored against what happened. “Decision” = is a purchase of 10–150% of monthly income safe above the ₹20,000 buffer? False-safe = predicted safe, actually breached.`} />
+          <dl className="mb-5 grid gap-3 text-[12.5px] sm:grid-cols-2">
+            {[
+              ['Dataset', 'Synthetic only. 30 seeds × 2 personas (salaried; USD freelancer paid via PayPal) = 60 six-month histories per condition, from the same generator family as the demo. “Noise-injected” adds late income (−3…+4 days), 10% skipped bills, random one-offs and ±25% monthly spend.'],
+              ['Baselines', 'Flat balance; linear drift (90-day average daily net flow); seasonal naive (replay the last 30 days of flows), a strong baseline for monthly cash flow.'],
+              ['Method', 'Walk-forward: 5 cut-offs per history; each model sees only transactions before the cut-off and forecasts 30 days. Decision = is a purchase of 10–150% of monthly income, made on the cut-off day, safe above the ₹20,000 buffer?'],
+              ['Limitations', 'Not real-user accuracy. The generator has the monthly structure the twin looks for, which favours it; real histories are messier. Single deterministic path; 30-day horizon only. Run it on a real export: python -m evals.forecast_backtest --file export.csv'],
+            ].map(([k, v]) => (
+              <div key={k} className={`rounded-xl p-3 ${k === 'Limitations' ? 'bg-amber-50 text-amber-900' : 'bg-slate-50 text-navy-700'}`}>
+                <dt className="font-semibold">{k}</dt><dd className="mt-0.5 leading-relaxed">{v}</dd>
+              </div>
+            ))}
+          </dl>
           {d.backtest ? Object.entries(d.backtest.results).map(([cond, r]) => (
             <div key={cond} className="mb-6 last:mb-0">
               <p className="mb-2 text-[13px] font-semibold text-navy-900">
@@ -121,10 +133,7 @@ export default function Evals() {
               <BacktestTable agg={r.aggregate} />
             </div>
           )) : <p className="text-sm text-navy-500">Not run yet.</p>}
-          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
-            Synthetic data from the same generator as the demo: this shows the method works on regular monthly cash flow, not how it performs on real users.
-            Run <code className="font-mono">python -m evals.forecast_backtest --file your_export.csv</code> on a real PayPal export.
-          </p>
+
         </Card>
 
         <Card>

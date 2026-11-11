@@ -242,3 +242,12 @@ def test_security_headers_and_chat_rate_limit(client):
         chat_limit.limit = old
         chat_limit.hits.clear()
     assert codes == [200, 200, 429]
+
+
+def test_long_rate_limit_switches_to_fallback_model_immediately():
+    handler, seen = scripted([httpx.Response(429, headers={"retry-after": "38"}, json={"error": {"code": "rate_limit_exceeded"}}),
+                              {"role": "assistant", "content": "ok"}])
+    slept: list[float] = []
+    c = LlmClient(groq(groq_model="big", groq_fallback_model="small"), httpx.MockTransport(handler), sleep=slept.append)
+    c.complete([], [])
+    assert [s["model"] for s in seen] == ["big", "small"] and slept == [] and "rate-limited" in c.calls[0].notes[0]

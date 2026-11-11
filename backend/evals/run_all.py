@@ -78,7 +78,7 @@ def main():
     args = ap.parse_args()
     step("evals.agent_eval", "--mode", "rules")
     if args.llm:
-        step("evals.agent_eval", "--mode", "llm")
+        step("evals.agent_eval", "--mode", "llm", "--tpm", "8000")
     step("evals.guardrail_redteam")
     step("evals.forecast_backtest")
     (RESULTS / "REPORT.md").write_text(report())

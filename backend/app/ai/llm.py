@@ -5,6 +5,7 @@ client covers both (no SDK dependency). The model only *chooses* engine tools an
 answer; it never computes figures (see app/ai/assistant.py and app/ai/guardrail.py).
 
 Reliability behaviour, all covered by tests with httpx.MockTransport:
+- 429 with a long Retry-After → switch to the fallback model at once (Groq limits are per model).
 - 429 / 5xx / network errors  → bounded retries with backoff (honours Retry-After, capped).
 - 400 `tool_use_failed`        → Groq rejected a malformed tool call; retried once at temperature 0.
 - 404 / model decommissioned   → the next configured model is tried (GROQ_FALLBACK_MODEL).
@@ -84,6 +85,12 @@ class LlmClient:
             if r.status_code == 200:
                 break
             code = _error_code(r)
+            if r.status_code == 429 and len(self.models) > 1 and (_retry_after(r) or 0) > MAX_BACKOFF_SECONDS:
+                # Groq limits each model separately: a long wait on one model is a reason to use the other now.
+                gone = self.models.pop(0)
+                call.notes.append(f"{gone} rate-limited for {_retry_after(r):.0f}s, switched to {self.model}")
+                call.model = self.model
+                continue
             if r.status_code == 429 or r.status_code >= 500:
                 if attempt < MAX_RETRIES:
                     attempt += 1

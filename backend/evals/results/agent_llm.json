@@ -1,0 +1,116 @@
+{
+  "benchmark": "agent",
+  "mode": "llm",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "commit": "4bbf771",
+  "python": "3.14.2",
+  "eval_today": "2026-11-03",
+  "summary": {
+    "overall": {
+      "n": 3,
+      "tool_accuracy": 1.0,
+      "arg_accuracy": 1.0,
+      "grounded_rate": 1.0,
+      "guardrail_replaced": 0.0,
+      "fallback_rate": 0.333,
+      "latency_ms_p50": 7647,
+      "latency_ms_p95": 23166,
+      "mean_tokens": 2898.7
+    },
+    "seen_wording": {
+      "n": 3,
+      "tool_accuracy": 1.0,
+      "arg_accuracy": 1.0,
+      "grounded_rate": 1.0,
+      "guardrail_replaced": 0.0,
+      "fallback_rate": 0.333,
+      "latency_ms_p50": 7647,
+      "latency_ms_p95": 23166,
+      "mean_tokens": 2898.7
+    },
+    "paraphrases": {
+      "n": 0,
+      "tool_accuracy": null,
+      "arg_accuracy": null,
+      "grounded_rate": null,
+      "guardrail_replaced": null,
+      "fallback_rate": null,
+      "latency_ms_p50": null,
+      "latency_ms_p95": null,
+      "mean_tokens": null
+    },
+    "by_category": {
+      "purchase": {
+        "n": 3,
+        "tool_accuracy": 1.0,
+        "arg_accuracy": 1.0,
+        "grounded_rate": 1.0,
+        "guardrail_replaced": 0.0,
+        "fallback_rate": 0.333,
+        "latency_ms_p50": 7647,
+        "latency_ms_p95": 23166,
+        "mean_tokens": 2898.7
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "buy-01",
+      "category": "purchase",
+      "paraphrase": false,
+      "question": "What happens if I buy a laptop worth ₹75,000 this month?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 1579,
+      "tokens": 4420,
+      "reply": "**Verdict:** Split the purchase with **PayPal Pay in 4** – you stay above your ₹20 k safety buffer and keep a healthy balance.\n\n- **Pay in full today** would drop your balance to about **₹13.8 k**, breaching the buffer for 7 days.  \n- **Waiting until 15 Nov** avoids the breach, but you’d have to postpone the laptop for two weeks.  \n- **PayPal Pay in 4** spreads the ₹75 k into four ₹18,750 installments, keeping the lowest projected balance at **₹52.2 k** (well above the buffer) with **no days below the buffer**.  \n- The **Pay Monthly (12 mo)** option adds interest (≈₹8.4 k extra) and pushes you"
+    },
+    {
+      "id": "buy-02",
+      "category": "purchase",
+      "paraphrase": false,
+      "question": "Can I afford a ₹40,000 phone?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": "passed",
+      "mode": "llm",
+      "fallback": false,
+      "ms": 7647,
+      "tokens": 4276,
+      "reply": "**Verdict:** You can afford the ₹40,000 phone — pay‑now is the safest choice.\n\n- Paying ₹40,000 today leaves a projected minimum balance of **₹48,800** (well above your ₹20,000 safety buffer).  \n- All other options (wait, Pay in 4, 12‑month Pay Monthly) also stay above the buffer, but they delay the purchase or add extra cost.  \n- The “pay now” option has **no extra fees or interest** and the earliest receipt date (today).  \n\nIf you’re comfortable waiting, the “wait until 15 Nov” option gives a higher future balance, but there’s no financial need to delay."
+    },
+    {
+      "id": "buy-03",
+      "category": "purchase",
+      "paraphrase": false,
+      "question": "Should I buy a ₹1.5 lakh scooter or use Pay Later?",
+      "tool_ok": true,
+      "args_ok": true,
+      "why": "",
+      "called": [
+        "compare_payment_options"
+      ],
+      "grounded": true,
+      "guardrail": null,
+      "mode": "rules",
+      "fallback": true,
+      "ms": 23166,
+      "tokens": 0,
+      "reply": "Split it with PayPal Pay Monthly · 12 mo: get it today and stay above your buffer.\n• Recommended: PayPal Pay Monthly · 12 mo. It is the cheapest option that keeps you above your ₹20,000 buffer.\n• Pay in full today: drops to -₹61,200 on 14 Nov 2026, below your ₹20,000 buffer for 70 day(s).\n• Wait until 15 Jan: drops to -₹3,397 on 14 Feb 2027, below your ₹20,000 buffer for 19 day(s).\n• PayPal Pay in 4: drops to -₹22,469 on 14 Jan 2027, below your ₹20,000 buffer for 60 day(s).\n• PayPal Pay Monthly · 12 mo: lowest balance ₹94,566 on 14 Dec 2026, above your ₹20,000 buffer; costs ₹16,734 extra."
+    }
+  ]
+}
