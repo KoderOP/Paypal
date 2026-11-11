@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/ui/PageHeader'
 import Compare from './Compare'
 import Simulator from './Simulator'
+import { ProvenanceTag } from '../components/Provenance'
 
 type View = 'purchase' | 'compare'
 
@@ -30,7 +31,7 @@ export default function WhatIf() {
 
   const header = (
     <>
-      <PageHeader eyebrow="What-if Simulator" title={current.title} description={current.description} />
+      <PageHeader eyebrow="What-if Simulator" title={current.title} description={current.description} actions={<ProvenanceTag />} />
       <div role="tablist" aria-label="Simulator view" className="mb-6 inline-flex rounded-xl bg-slate-100 p-1">
         {VIEWS.map((v) => (
           <button key={v.value} role="tab" aria-selected={view === v.value} aria-controls="whatif-panel"

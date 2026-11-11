@@ -106,11 +106,15 @@ export default function Checkout() {
           )}
           {o.status === 'captured' && (
             <div className="rounded-xl bg-brand-50 p-4 text-sm text-brand-700">
-              <p className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" /> Paid with PayPal</p>
+              <p className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" />
+                {o.environment === 'demo' ? 'Captured in PayPal demo mode (simulated, no real PayPal call)' : `Captured in PayPal ${o.environment === 'sandbox' ? 'Sandbox' : 'Live'}`}
+              </p>
               <p className="mt-1 text-[13px]">Capture ID <code className="rounded bg-white/70 px-1">{o.capture_id}</code>.{' '}
-                {o.snapshot.recorded?.kind === 'obligations'
-                  ? `Your twin now includes ${o.snapshot.recorded.count} Pay Later instalments as upcoming payments.`
-                  : 'Your twin now includes this payment, so your balance and forecast are already updated.'}
+                {(o.snapshot.recorded as { cleared_from_twin?: boolean } | undefined)?.cleared_from_twin
+                  ? 'This payment is no longer in your twin because the data was reset afterwards.'
+                  : o.snapshot.recorded?.kind === 'obligations'
+                  ? `Your twin now includes ${o.snapshot.recorded.count} instalments as upcoming payments. This is a simulated schedule from FINORA’s illustrative terms; PayPal sets the real one.`
+                  : 'Your twin now includes this payment, labelled with its PayPal source, so your balance and forecast are updated.'}
               </p>
               <div className="mt-3 flex gap-3 text-[13px] font-semibold">
                 <Link to="/" className="hover:underline">See your updated forecast →</Link>

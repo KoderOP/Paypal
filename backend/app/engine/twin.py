@@ -137,7 +137,8 @@ def detect_recurring(txns: list[Txn], as_of: date) -> list[RecurringItem]:
                 currency=foreign,
                 foreign_amount=money(Decimal(median(f.net for f in recent_fx))) if foreign else None,
                 key=f"{direction}:{key}",
-                name=latest.description,
+                # PayPal rows read "<PayPal type> · <merchant>"; the merchant is the readable name.
+                name=latest.merchant if latest.description.endswith(f" · {latest.merchant}") else latest.description,
                 merchant=latest.merchant,
                 category=latest.category,
                 kind=_kind(latest.category, direction),

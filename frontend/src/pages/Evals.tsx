@@ -101,7 +101,18 @@ export default function Evals() {
   return (
     <>
       <PageHeader eyebrow="Evaluation" title="How we know it works"
-        description="Three reproducible evaluations, run offline from backend/evals. These pages show the committed results unmodified; nothing here is computed in the browser." />
+        description="Four reproducible evaluations from backend/evals. This page shows the committed results unmodified; nothing is computed in the browser." />
+
+      <div className="mb-5 rounded-2xl border-2 border-amber-300 bg-amber-50 px-5 py-4 text-[13px] leading-relaxed text-amber-950">
+        <p className="font-semibold">None of these numbers is real-customer accuracy.</p>
+        <p className="mt-1">The forecast backtest runs on <b>synthetic histories</b>; the agent benchmarks run on the <b>fictional sample profile</b>.
+          They show the method works and is measured honestly. Real-world accuracy would need real histories: run
+          <code className="mx-1 font-mono">python -m evals.forecast_backtest --file &lt;your PayPal export&gt;</code>on your own data.</p>
+        <ol className="mt-2 grid gap-x-6 gap-y-0.5 sm:grid-cols-2">
+          <li>1 · Synthetic forecast backtest</li><li>2 · Guardrail red-team (seeded corruptions)</li>
+          <li>3 · Live Groq agent benchmark</li><li>4 · Offline deterministic planner benchmark</li>
+        </ol>
+      </div>
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-navy-900 px-5 py-4 text-white">
         <p className="flex items-center gap-2 text-sm"><Terminal className="h-4 w-4 text-emerald-300" /> Reproduce every number:</p>
@@ -154,28 +165,31 @@ export default function Evals() {
           </> : <p className="text-sm text-navy-500">Not run yet.</p>}
         </Card>
 
-        <Card>
-          <CardHeader icon={<Microscope className="h-4 w-4" />} title="3 · Agent benchmark: right tool, right arguments, grounded answer"
-            subtitle="Single-turn and multi-turn questions, including held-out paraphrases the deterministic planner was not written for." />
-          <div className="space-y-6">
-            {(['llm', 'rules'] as const).map((m) => {
-              const a = d.agent[m]
-              return (
-                <div key={m}>
-                  <p className="mb-2 flex flex-wrap items-center gap-2 text-[13px] font-semibold text-navy-900">
-                    {m === 'llm' ? <><FlaskConical className="h-4 w-4 text-brand-600" /> Groq tool calling</> : 'Deterministic planner (offline fallback)'}
-                    {a && <Badge tone="navy">{a.model ?? 'no model'} · commit {a.commit ?? '?'}</Badge>}
-                  </p>
-                  {a ? <AgentTable a={a} /> : (
-                    <p className="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-[13px] text-navy-500">
-                      Not run in this build: it needs a <code className="font-mono">GROQ_API_KEY</code>. Run <code className="font-mono">python -m evals.agent_eval --mode llm</code>; results appear here.
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </Card>
+        {(['llm', 'rules'] as const).map((m) => {
+          const a = d.agent[m]
+          return (
+            <Card key={m}>
+              <CardHeader icon={m === 'llm' ? <FlaskConical className="h-4 w-4" /> : <Microscope className="h-4 w-4" />}
+                title={m === 'llm' ? '3 · Live Groq agent benchmark' : '4 · Offline deterministic planner benchmark'}
+                subtitle={m === 'llm'
+                  ? 'Real Groq API calls: does the model pick the right engine tool with the right arguments, and is the final answer grounded? Same 40 questions as section 4.'
+                  : 'The no-API-key fallback: a rule-based planner on the same 40 questions, including 14 held-out paraphrases it was not written for. No model involved.'}
+                action={a && <Badge tone="navy">{a.model ?? 'rules'} · commit {a.commit ?? '?'}</Badge>} />
+              {a && m === 'llm' && (
+                <p className="mb-3 text-[12px] text-navy-500">
+                  Paced to Groq&apos;s free-tier limit of 8,000 tokens/minute{a.summary.overall.mean_tokens ? ` (~${Math.round(a.summary.overall.mean_tokens).toLocaleString('en-IN')} tokens per question)` : ''}.
+                  “Rewrites” are drafts the guardrail rejected and replaced with engine wording; the ones we reproduced were the model doing its own arithmetic.
+                  “Fallback” means a provider error was answered by the offline planner. Benchmark questions run on the fictional sample profile.
+                </p>
+              )}
+              {a ? <AgentTable a={a} /> : (
+                <p className="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-[13px] text-navy-500">
+                  Not run in this build: it needs a <code className="font-mono">GROQ_API_KEY</code>. Run <code className="font-mono">python -m evals.agent_eval --mode llm --tpm 8000</code>; results appear here.
+                </p>
+              )}
+            </Card>
+          )
+        })}
       </div>
     </>
   )

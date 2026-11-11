@@ -60,6 +60,10 @@ strong baseline for monthly cash flow.
 - **A 3.5% false-safe rate is not zero.** This is why the product presents a buffer, shows the low point and date, and offers
   a stress test with Monte Carlo bands. A natural next step is calibrating a margin from these residuals.
 
+**What this does and doesn't show.** It shows the forecasting *method* beats standard baselines on cash flow with monthly
+structure, with and without noise. It does **not** show accuracy on real users: no real histories were available. The 95.0%
+figure should always be quoted with "synthetic backtest" and the baseline next to it.
+
 **Caveat.** The histories come from the same generator family as the demo. That favours any model that finds monthly
 structure, so read these as evidence the method works, not as real-world accuracy. The `--file` mode exists so anyone can
 measure it on a real PayPal export.
@@ -124,13 +128,32 @@ the final reply passed the grounding check.
 The planner is exact on the wording it knows and brittle beyond it, while staying grounded either way. That gap is the reason
 for the LLM path.
 
-**Groq (live): not run in this build.** No API key was available while it was built, and no number is estimated or
-implied. Run `python -m evals.agent_eval --mode llm`. It records tool and argument accuracy, grounding, guardrail rewrites,
-fallback rate, p50/p95 latency and tokens per question to `evals/results/agent_llm.json`, and `/evals` picks it up
-automatically.
+**Groq (live, `openai/gpt-oss-120b`):**
+
+<!-- GROQ_TABLE -->
+
+Run with `python -m evals.agent_eval --mode llm --tpm 8000`. `--tpm` paces requests to Groq's free-tier limit of 8,000 tokens per
+minute, so the results measure the agent, not the rate limiter. One question costs about 4,800 tokens (two model rounds,
+each carrying the tool schemas).
+
+### Why some Groq drafts are rewritten
+In the first live run, 8 of 40 drafts (20%) failed the guardrail and were replaced with engine wording. To find out whether
+the guardrail was too strict, we re-ran those 8 questions and recorded the rejected drafts. 6 passed on the rerun (the model's
+output varies between runs). Both rejections that reproduced were **Groq doing its own arithmetic**:
+
+- *"Earliest date I could drop ₹60,000 on a sofa?"* Groq subtracted ₹68,800 − ₹60,000 and wrote "you'll still have a buffer of
+  about ₹8,800". The subtraction was right, but the meaning was wrong: ₹8,800 is the room *above* the ₹20,000 buffer, and the
+  low point would be ₹28,800.
+- *"What about 20 days?"* (income delay). Groq stated the drop in the lowest balance as ₹25,302; the right figure is
+  ₹88,800 − ₹62,498 = **₹26,302**.
+
+So the rewrites were true catches, not false alarms. The fix was on the tool side: results now include the differences people
+ask about, computed by the engine (`min_balance_change`, `end_balance_change`, `room_above_buffer_if_bought_today`,
+`lowest_projected_balance_if_bought_today`), and the prompt says to quote them rather than compute. Both questions then
+passed with correct figures. The table above is from the run after that change.
 
 ## Test suite
 
-`pytest` (186 tests) covers the engine, parsers, PayPal flows (mocked HTTP and demo mode), the Groq client's retry/fallback
+`pytest` (191 tests) covers the engine, parsers, PayPal flows (mocked HTTP and demo mode), the Groq client's retry/fallback
 behaviour, the agent loop and trace, the guardrail (accept/reject cases plus regressions), the checkout-proposal tool (creates
 no order, flags unsafe options), the rate limit, and the landing demo storyline on dates across a full year.

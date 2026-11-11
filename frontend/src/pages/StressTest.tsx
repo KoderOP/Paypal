@@ -13,6 +13,7 @@ import { api } from '../lib/api'
 import { fmtDate, fmtShort, inr, inrCompact, pct } from '../lib/format'
 import { describeChange } from '../lib/scenarios'
 import type { StressReport } from '../lib/types'
+import { ProvenanceTag } from '../components/Provenance'
 
 const RESILIENCE = {
   strong: { label: 'Strong', tone: 'from-emerald-600 to-emerald-700', Icon: ShieldCheck, text: 'You can absorb most shocks without dipping below zero.' },
@@ -31,7 +32,8 @@ export default function StressTest() {
   return (
     <>
       <PageHeader eyebrow="Stress testing" title="How resilient are your finances?"
-        description="Your twin is hit with common shocks and thousands of spending variations, using the same engine as the simulator. Everything here is an estimate." />
+        description="Your twin is hit with common shocks and thousands of spending variations, using the same engine as the simulator. Everything here is an estimate."
+        actions={<ProvenanceTag />} />
 
       <div className={`rounded-2xl bg-gradient-to-br ${r.tone} p-6 text-white shadow-lg`}>
         <div className="flex flex-wrap items-start gap-4">

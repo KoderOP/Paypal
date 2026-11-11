@@ -159,14 +159,14 @@ export default function Landing() {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const files = useApi(api.demoFiles)
+  const sampleRows = files.data?.find((f) => f.id === 'paypal_activity')?.rows
 
   async function launchDemo() {
     setBusy(true)
     setError(null)
     try {
-      const files = await api.demoFiles()
-      const f = files.find((x) => x.id === 'paypal_activity') ?? files[0]
-      await api.importFile(await api.demoFile(f), 'auto', '', true)
+      await api.loadSample('paypal_activity', true)  // generated server-side and stored as origin="sample"
       await refresh()
       navigate(`/assistant?q=${encodeURIComponent(DEMO_QUESTION)}`)
     } catch (e) {
@@ -214,9 +214,13 @@ export default function Landing() {
                 <Wallet className="h-4 w-4" /> Use my PayPal data
               </Link>
             </div>
-            <p className="rise mt-4 text-[12.5px] text-slate-400 [animation-delay:300ms]">
-              The demo loads six months of <b className="font-semibold text-slate-200">synthetic</b> PayPal activity. No real money, no sign-in.
-            </p>
+            <div className="rise mt-5 max-w-xl rounded-xl border border-amber-300/30 bg-amber-300/[0.07] px-4 py-3 text-[13px] leading-relaxed text-amber-100 [animation-delay:300ms]">
+              <p className="mb-1 font-mono text-[10.5px] font-bold uppercase tracking-widest text-amber-300">Sample data</p>
+              This is a fictional financial profile containing {sampleRows ? <b className="text-white">{sampleRows}</b> : 'about 285'} synthetic
+              transactions, created to demonstrate FINORA’s financial intelligence. No real customer financial data is displayed.
+              <span className="text-amber-200/80"> It uses PayPal’s Activity-report format, but none of it came from PayPal. Payments in the demo
+              go through PayPal Sandbox (or a labelled simulation), never real money.</span>
+            </div>
             {error && <p role="alert" className="mt-4 rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200">{error}</p>}
           </div>
           <DecisionReceipt />

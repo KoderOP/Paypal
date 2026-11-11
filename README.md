@@ -28,13 +28,24 @@ cd frontend && npm install && npm run dev
 Open http://localhost:5173 and click **Launch the live demo**. This loads six months of **synthetic** PayPal activity and asks
 the agent the laptop question. With no `.env`, everything works offline:
 
-| Component | Without keys | With keys (`backend/.env`, see `.env.example`) |
+| Component | Without keys | With keys (`.env` at the repo root or in `backend/`, see `.env.example`) |
 |---|---|---|
 | Agent | Deterministic planner, same tools, exact figures | **Groq tool calling** (`GROQ_API_KEY`), default `openai/gpt-oss-120b`, fallback `openai/gpt-oss-20b` |
 | PayPal | Built-in **PayPal demo mode**: an in-process stand-in for the REST API, clearly labelled, no money moves | **PayPal Sandbox** (`PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`): same client code |
 
 Before a live demo, verify the key and model with `cd backend && python -m evals.check_groq`.
 Docker: `docker compose up --build` (Postgres 16 + backend + frontend).
+
+### PayPal Sandbox setup (verified end to end)
+
+1. developer.paypal.com → Apps & Credentials → **Sandbox** app → copy the client id and secret into `.env`.
+2. PayPal Sandbox doesn't accept INR orders (`422 Currency code is not currently supported`), so set
+   `PAYPAL_CHECKOUT_CURRENCY=USD` and `PAYPAL_CHECKOUT_FX_RATE=84` (INR per USD, your choice). ₹75,000 is then charged as
+   **USD 892.86**, and the twin keeps the ₹ amount. Without a rate, cross-currency checkout is refused, so it never charges $75,000.
+3. Approve with a **US-registered** sandbox *Personal* account (Testing Tools → Sandbox Accounts → Create → Country: United States).
+   India-registered sandbox buyer accounts are refused by PayPal ("the currency you have chosen can't be taken").
+4. `cd backend && python -m evals.check_paypal` makes a real sign-in to PayPal's API, a $1 order and (`--capture ID`) a capture,
+   using the app's own client code.
 
 ## What makes it different
 
@@ -122,7 +133,7 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Demo script: [docs/DEMO
 ## Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest -q   # 186 tests: engine, parsers, PayPal (mocked + demo), Groq client, agent, guardrail, demo storyline
+cd backend && .venv/bin/python -m pytest -q   # 191 tests: engine, parsers, PayPal (mocked + demo), Groq client, agent, guardrail, demo storyline
 cd frontend && npm run build                  # type-check + production build
 ```
 
@@ -131,11 +142,16 @@ generated relative to today.
 
 ## Honest limitations
 
-- **Live Groq and PayPal Sandbox calls were not exercised while building** (no credentials were available). Both are covered by
-  mocked-HTTP tests of the exact request/response shapes, and PayPal demo mode runs the full flow through the same client code.
-  Run `python -m evals.check_groq` and the live agent benchmark before relying on them.
-- **Pay Later terms are illustrative inputs.** PayPal decides eligibility, APR and schedule at checkout, and Pay Later isn't
-  offered in every currency (including INR). Set `PAYPAL_CHECKOUT_CURRENCY=USD` for sandbox testing.
+- **What was verified live, and what wasn't.** Groq tool calling was verified (benchmark below). PayPal Sandbox was verified
+  end to end through the app: order → approval by a US sandbox buyer → capture with confirmation → PayPal reports
+  `COMPLETED` (USD 892.86) → twin updated. Transaction Search returned PayPal's 403 (the feature isn't enabled on our sandbox
+  app; the app shows the fix), so a live sync wasn't verified. Also not verified live: Subscriptions API actions, Log in with
+  PayPal, and a Pay Later (Pay in 4) approval. These are covered by mocked-HTTP tests and demo mode only.
+- **Pay Later terms are illustrative inputs.** PayPal decides eligibility, APR and schedule at checkout (the buyer chooses on
+  PayPal's page). FINORA records instalments from the option you chose, which may differ from what PayPal finally offers.
+- **Currency conversion uses your rate**, not PayPal's. FINORA never fetches FX rates.
+- **Groq free tier: 8,000 tokens per minute**, about 4,800 tokens per question, so under 2 questions a minute. A long rate
+  limit switches to the fallback model, and if that fails too, the deterministic planner answers (the trace shows which ran).
 - **Value-based grounding** can't tell a corrupted figure from a coincidentally equal legitimate one (the 2.3% red-team misses).
 - **One data profile per deployment.** Sign in with PayPal identifies the user but data isn't multi-tenant yet.
 - Forecasts detect monthly recurrence only and produce one deterministic path (bands come from the separate stress test).

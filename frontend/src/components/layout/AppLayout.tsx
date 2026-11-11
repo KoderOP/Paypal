@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/Auth'
 import { useDataStatus } from '../../context/DataStatus'
+import { SampleDataBanner } from '../Provenance'
 
 interface NavItem { to: string; label: string; icon: typeof Bot; highlight?: boolean; paypal?: boolean }
 // One journey: ask → decide → pay with PayPal. Everything else supports that loop.
@@ -113,8 +114,15 @@ function DataCta({ onNavigate }: { onNavigate?: () => void }) {
   const { status } = useDataStatus()
   return (
     <div className="rounded-xl bg-gradient-to-br from-navy-900 to-navy-800 p-4 text-white">
-      <p className="text-xs font-semibold text-brand-500">{status?.has_data ? `${status.transaction_count} transactions in your twin` : 'No data yet'}</p>
-      <p className="mt-1 text-xs leading-relaxed text-slate-300">Connect PayPal or upload a statement to keep your twin current.</p>
+      <p className="text-xs font-semibold text-brand-500">
+        {!status?.has_data ? 'No data yet'
+          : status.sample_count === status.transaction_count ? `${status.sample_count} sample transactions (fictional)`
+          : status.sample_count ? `${status.transaction_count} transactions · ${status.sample_count} sample`
+          : `${status.transaction_count} transactions in your twin`}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-300">
+        {status?.sample_count ? 'Replace the sample with your own PayPal data or statement.' : 'Connect PayPal or upload a statement to keep your twin current.'}
+      </p>
       <Link to="/get-started" onClick={onNavigate} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-semibold hover:bg-white/20">
         <UploadCloud className="h-3.5 w-3.5" /> {status?.has_data ? 'Add or replace data' : 'Add your data'}
       </Link>
@@ -155,6 +163,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
+      <div className="lg:ml-[272px]"><SampleDataBanner /></div>
       <main key={pathname} className="animate-fade-up px-4 py-6 sm:px-6 lg:ml-[272px] lg:px-10 lg:py-9">
         <div className="mx-auto max-w-[1280px]">{children}</div>
       </main>

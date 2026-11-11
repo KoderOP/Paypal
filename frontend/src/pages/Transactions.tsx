@@ -8,6 +8,8 @@ import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { api } from '../lib/api'
 import { fmtDate, inr } from '../lib/format'
+import { OriginBadge, ProvenanceTag } from '../components/Provenance'
+import { useDataStatus } from '../context/DataStatus'
 
 const PAGE_SIZE = 25
 
@@ -16,16 +18,19 @@ export default function Transactions() {
   const [q, setQ] = useState('')
   const [category, setCategory] = useState('')
   const [direction, setDirection] = useState('')
+  const [origin, setOrigin] = useState('')
+  const { status } = useDataStatus()
   const [page, setPage] = useState(1)
   useEffect(() => { const t = setTimeout(() => { setQ(search); setPage(1) }, 300); return () => clearTimeout(t) }, [search])
 
   const cats = useApi(api.categories)
-  const txns = useApi(() => api.transactions({ search: q, category, direction, page, page_size: PAGE_SIZE }), [q, category, direction, page])
+  const txns = useApi(() => api.transactions({ search: q, category, direction, origin, page, page_size: PAGE_SIZE }), [q, category, direction, origin, page])
   const pages = txns.data ? Math.max(1, Math.ceil(txns.data.total / PAGE_SIZE)) : 1
 
   return (
     <>
-      <PageHeader eyebrow="Transactions" title="Transaction history" description="The raw data your twin learns from. Every balance in FINORA is derived from these records." />
+      <PageHeader eyebrow="Transactions" title="Transaction history" description="The raw data your twin learns from. Every balance in FINORA is derived from these records, and each row shows where it came from."
+        actions={<ProvenanceTag />} />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card padded={false}>
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4">
@@ -40,6 +45,12 @@ export default function Transactions() {
             <select value={direction} onChange={(e) => { setDirection(e.target.value); setPage(1) }} aria-label="Direction" className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
               <option value="">In & out</option><option value="in">Money in</option><option value="out">Money out</option>
             </select>
+            {(status?.provenance.length ?? 0) > 1 && (
+              <select value={origin} onChange={(e) => { setOrigin(e.target.value); setPage(1) }} aria-label="Source" className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <option value="">All sources</option>
+                {status?.provenance.map((p) => <option key={p.origin} value={p.origin}>{p.label} ({p.count})</option>)}
+              </select>
+            )}
           </div>
           {txns.error ? <div className="p-4"><ErrorState error={txns.error} onRetry={txns.reload} /></div> : !txns.data ? (
             <div className="space-y-2 p-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
@@ -47,14 +58,15 @@ export default function Transactions() {
             <div className={`overflow-x-auto ${txns.loading ? 'opacity-60' : ''}`}>
               <table className="w-full text-[13px]">
                 <thead><tr className="border-b border-slate-100 text-left text-xs text-navy-400">
-                  <th className="px-4 py-2.5 font-medium">Date</th><th className="px-4 py-2.5 font-medium">Description</th><th className="px-4 py-2.5 font-medium">Category</th><th className="px-4 py-2.5 text-right font-medium">Amount</th>
+                  <th className="px-4 py-2.5 font-medium">Date</th><th className="px-4 py-2.5 font-medium">Description</th><th className="px-4 py-2.5 font-medium">Category</th><th className="px-4 py-2.5 font-medium">Source</th><th className="px-4 py-2.5 text-right font-medium">Amount</th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-100">
                   {txns.data.items.map((t) => (
                     <tr key={t.id} className="hover:bg-slate-50/60">
                       <td className="whitespace-nowrap px-4 py-2.5 text-navy-500">{fmtDate(t.posted_on)}</td>
                       <td className="px-4 py-2.5"><p className="text-navy-800">{t.description}</p><p className="text-[11px] text-navy-400">{t.merchant}</p></td>
-                      <td className="px-4 py-2.5"><div className="flex flex-wrap gap-1"><Badge>{t.category}</Badge>{t.source === 'paypal' && <Badge tone="blue">PayPal</Badge>}</div></td>
+                      <td className="px-4 py-2.5"><Badge>{t.category}</Badge></td>
+                      <td className="px-4 py-2.5"><OriginBadge origin={t.origin} environment={t.environment} title={t.origin_label} /></td>
                       <td className={`tabular whitespace-nowrap px-4 py-2.5 text-right font-medium ${t.amount > 0 ? 'text-brand-700' : 'text-navy-900'}`}>{t.amount > 0 ? '+' : '−'}{inr(Math.abs(t.amount), true)}</td>
                     </tr>
                   ))}

@@ -87,6 +87,9 @@ function OptionCard({ o, cmp, compact, planned, onHover, onCheckout, onPlan }: {
           : o.safe ? <Badge tone="green">Safe</Badge> : <Badge tone="red" icon={<AlertTriangle className="h-3 w-3" />}>Below buffer</Badge>}
       </div>
       <p className="mt-1 text-[11px] leading-relaxed text-navy-500">{o.summary}</p>
+      {o.kind === 'pay_later' && (
+        <p className="mt-1 text-[10.5px] font-medium text-amber-800">Illustrative terms. PayPal decides eligibility, APR and schedule at checkout.</p>
+      )}
 
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px]">
         <dt className="text-navy-500">You get it</dt><dd className="tabular text-right font-medium text-navy-900">{o.get_it_on === cmp.as_of ? 'Today' : fmtShort(o.get_it_on)}</dd>

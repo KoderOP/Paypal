@@ -82,6 +82,7 @@ export interface Dashboard {
   as_of: ISODate
   user_name: string
   data_source: string
+  provenance: Provenance[]
   kpis: {
     current_balance: number
     monthly_income: number
@@ -130,7 +131,13 @@ export interface FinancialProfile {
 
 export interface TwinData { profile: FinancialProfile; assumptions: Assumptions }
 
-export interface Transaction { id: number; posted_on: ISODate; description: string; merchant: string; category: string; amount: number; source: string }
+export type Origin = 'sample' | 'user_import' | 'paypal_api' | 'paypal_checkout' | 'unknown'
+/** Where data came from. Recorded at storage time by the backend, never inferred from file format. */
+export interface Provenance { origin: Origin; environment: string | null; label: string; count: number; first: ISODate | null; last: ISODate | null; synthetic: boolean }
+export interface Transaction {
+  id: number; posted_on: ISODate; description: string; merchant: string; category: string; amount: number
+  source: string; origin: Origin; environment: string | null; origin_label: string
+}
 export interface TransactionPage { items: Transaction[]; total: number; page: number; page_size: number }
 export interface ImportResult {
   format: string
@@ -141,6 +148,8 @@ export interface ImportResult {
   account_id: number
   opening_balance: number
   warnings: string[]
+  origin: Origin
+  environment: string | null
 }
 
 export type FileFormat = 'paypal_activity' | 'bank_statement' | 'transactions'
@@ -152,9 +161,14 @@ export interface DemoFile {
   filename: string
   description: string
   suggested_opening_balance: number | null
+  rows: number
 }
 
-export interface StatusData { has_data: boolean; user_name: string; data_source: string | null; transaction_count: number }
+export interface StatusData {
+  has_data: boolean; user_name: string; data_source: string | null; transaction_count: number
+  provenance: Provenance[]
+  sample_count: number
+}
 
 /** `demo` = no PayPal credentials, so FINORA's built-in PayPal simulation is used (environment "demo"). */
 export interface PayPalStatus { configured: boolean; environment: string; demo: boolean; api_sync_available: boolean; message: string }
@@ -183,6 +197,11 @@ export interface PayPalOverview extends PayPalStatus {
   first_date: ISODate | null
   last_date: ISODate | null
   top_merchants: { merchant: string; count: number; total: number }[]
+  records_by_origin: Provenance[]
+  sample_transactions: number
+  imported_transactions: number
+  last_sync: { at: string; environment: string; outcome: 'ok' | 'empty' | 'error'; records: number; message: string | null } | null
+  checkouts_by_status: Record<string, number>
 }
 
 export interface ObligationCreate { title: string; category: string; amount: number; due_on: ISODate; notes?: string }

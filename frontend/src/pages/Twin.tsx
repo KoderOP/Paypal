@@ -8,6 +8,7 @@ import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
 import { fmtDate, fmtMonth, fmtShort, inr, pct, recurringOrigin, signedInr, titleCase } from '../lib/format'
 import type { RecurringItem } from '../lib/types'
+import { ProvenanceTag } from '../components/Provenance'
 
 export default function Twin() {
   const twin = useApi(api.twin)
@@ -21,7 +22,8 @@ export default function Twin() {
   return (
     <>
       <PageHeader eyebrow="My Financial Twin" title="Your financial behaviour, modelled"
-        description={`Learned from ${p.transaction_count} transactions since ${p.history_start ? fmtDate(p.history_start) : '—'}. This profile drives every forecast and simulation.`} />
+        description={`Learned from ${p.transaction_count} transactions since ${p.history_start ? fmtDate(p.history_start) : '—'}. This profile drives every forecast and simulation.`}
+        actions={<ProvenanceTag />} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Fact label="Regular income" value={`${inr(p.monthly_income)}/mo`} />

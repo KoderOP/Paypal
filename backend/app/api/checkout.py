@@ -1,4 +1,4 @@
-"""Pay with PayPal after simulating, with two explicit confirmations.
+"""Pay with PayPal after simulating: three human steps (two confirmations in FINORA, approval on PayPal).
 
 1. POST /checkout/orders   requires `acknowledged: true` (the user reviewed the simulated impact).
                            The simulation is re-run server-side and snapshotted on the order.

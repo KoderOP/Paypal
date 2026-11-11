@@ -70,6 +70,8 @@ export const api = {
     return new File([await res.blob()], f.filename, { type: 'text/csv' })
   },
   demoFileUrl: (id: string) => `${BASE}/api/demo-files/${id}`,
+  loadSample: (fileId = 'paypal_activity', replace = true) =>
+    request<ImportResult>('/data/sample', json('POST', { file_id: fileId, replace })),
   importFile: (file: File, format: FileFormat | 'auto', openingBalance: string, replace: boolean) => {
     const fd = new FormData()
     fd.append('file', file)
@@ -96,7 +98,7 @@ export const api = {
     request<Affordability>('/simulations/affordability', json('POST', body)),
   scenario: (changes: ScenarioChange[], title?: string) => request<ScenarioResult>('/simulations/scenario', json('POST', { changes, title })),
 
-  // PayPal checkout (Orders API) — two explicit confirmations
+  // PayPal checkout (Orders API): three human steps (confirm in FINORA, approve on PayPal, confirm capture)
   startCheckout: (body: { amount: number; label: string; option_id: string; acknowledged: boolean; safety_buffer?: number }) =>
     request<CheckoutOrder>('/checkout/orders', json('POST', body)),
   checkoutOrder: (id: number) => request<CheckoutOrder>(`/checkout/orders/${id}`),
@@ -126,6 +128,7 @@ export const api = {
 
   // Assistant
   assistantStatus: () => request<AssistantStatus>('/assistant/status'),
+  paypalCheckAuth: () => request<{ ok: boolean; environment: string; message: string }>('/integrations/paypal/check-auth', json('POST', {})),
   evals: () => request<EvalsData>('/evals'),
   chat: (messages: ChatTurn[], context?: ChatContext | null) =>
     request<ChatResponse>('/assistant/chat', json('POST', { messages, context: context ?? undefined })),

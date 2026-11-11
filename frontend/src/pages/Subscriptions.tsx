@@ -11,6 +11,7 @@ import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
 import { fmtShort, inr, signedInr } from '../lib/format'
 import type { AddedSubscription, DetectedSubscription, ScenarioResult, SubscriptionInput } from '../lib/types'
+import { ProvenanceTag } from '../components/Provenance'
 
 export default function Subscriptions() {
   const ov = useApi(api.subscriptions)
@@ -52,7 +53,8 @@ export default function Subscriptions() {
   return (
     <>
       <PageHeader eyebrow="Subscriptions" title="What are your subscriptions really costing?"
-        description="Detected from your recurring payments, added by you, or linked from PayPal. Select any to simulate cancelling them; add a new one to see what it costs you first. Your forecast updates either way." />
+        description="Detected from your recurring payments, added by you, or linked from PayPal. Select any to simulate cancelling them; add a new one to see what it costs you first."
+        actions={<ProvenanceTag />} />
 
       {msg && (
         <p role="status" className={`mb-4 rounded-xl p-3 text-sm ${msg.ok ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-700'}`}>

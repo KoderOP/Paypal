@@ -1,9 +1,9 @@
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarClock, FlaskConical, PiggyBank, Repeat, TrendingUp, Wallet } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarClock, PiggyBank, Repeat, Wallet } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AlertsCard } from '../components/AlertsCard'
 import { CashflowChart } from '../components/charts/CashflowChart'
 import { MonthlyBars } from '../components/charts/MonthlyBars'
-import { DataSourceBadge } from '../components/DataSourceBadge'
 import { ProjectedTag } from '../components/ui/Badge'
 import { Card, CardHeader } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -14,6 +14,7 @@ import { useApi } from '../hooks/useApi'
 import { api } from '../lib/api'
 import { daysBetween, fmtDate, fmtShort, greeting, inr, pct, recurringOrigin, signedInr } from '../lib/format'
 import type { Dashboard, HealthIndicator } from '../lib/types'
+import { ProvenanceTag } from '../components/Provenance'
 
 export default function Overview() {
   const { data, error, loading, reload } = useApi(api.dashboard)
@@ -32,22 +33,21 @@ export default function Overview() {
         title={`${greeting()}, ${firstName}`}
         description={
           <>
-            Here's where you stand today — and where your twin projects you'll be in {forecast.assumptions.horizon_days} days if your current patterns continue.
+            Where you stand today, and where your twin projects you’ll be in {forecast.assumptions.horizon_days} days. Check any purchase against it before you pay.
           </>
         }
-        actions={<DataSourceBadge source={data.data_source} />}
+        actions={<ProvenanceTag provenance={data.provenance} />}
       />
 
+      <DecisionStrip />
       <AlertsCard />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard emphasis label="Available balance" icon={<Wallet className="h-4 w-4" />} value={inr(kpis.current_balance)}
           hint={daysToIncome !== null ? `Next income in ${daysToIncome} days · ${fmtShort(kpis.next_income_date!)}` : 'No regular income detected'} />
         <StatCard kind="derived" label="Monthly income" icon={<ArrowUpRight className="h-4 w-4 text-brand-600" />} value={inr(kpis.monthly_income)} hint="Regular, detected from recurring credits" />
         <StatCard kind="derived" label="Monthly spending" icon={<ArrowDownRight className="h-4 w-4 text-navy-400" />} value={inr(kpis.monthly_expenditure)} hint="Average of last 90 days, excl. investments" />
         <StatCard kind="derived" label="Savings rate" icon={<PiggyBank className="h-4 w-4 text-navy-400" />} value={pct(kpis.savings_rate)} hint={`incl. ${inr(kpis.monthly_investments)}/mo invested`} />
-        <StatCard kind="projected" label="Balance in 90 days" icon={<TrendingUp className="h-4 w-4 text-blue-600" />} value={inr(kpis.projected_balance_90)}
-          hint={<span className={delta90 >= 0 ? 'text-brand-700' : 'text-red-600'}>{signedInr(delta90)} vs today</span>} />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -55,7 +55,7 @@ export default function Overview() {
           <CardHeader title="Cash-flow trajectory" subtitle="Recorded balance (solid) and the twin's deterministic projection (dashed)." />
           <CashflowChart history={data.history} forecast={forecast} />
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-4">
-            <MiniStat label="In 30 days" value={inr(kpis.projected_balance_30)} projected />
+            <MiniStat label="In 90 days" value={inr(kpis.projected_balance_90)} sub={signedInr(delta90) + ' vs today'} projected />
             <MiniStat label="Lowest point" value={inr(forecast.min_balance)} sub={fmtShort(forecast.min_balance_date)} projected />
             <MiniStat label="Expected inflow" value={inr(forecast.total_inflow)} sub="next 90 days" projected />
             <MiniStat label="Expected outflow" value={inr(forecast.total_outflow)} sub="next 90 days" projected />
@@ -72,10 +72,9 @@ export default function Overview() {
         <UpcomingCard data={data} />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <CategoryCard data={data} />
         <SubscriptionsCard data={data} />
-        <SimulatorTeaser balance={kpis.current_balance} />
       </div>
     </>
   )
@@ -185,18 +184,47 @@ function SubscriptionsCard({ data }: { data: Dashboard }) {
   )
 }
 
-function SimulatorTeaser({ balance }: { balance: number }) {
+
+const JOURNEY = ['Understand your cash flow', 'Ask about a purchase', 'Compare payment choices', 'Get a PayPal checkout proposal', 'Confirm it yourself', 'See the PayPal result']
+
+/** The product in one line: type an amount, and the agent tests it against your future before you pay. */
+function DecisionStrip() {
+  const navigate = useNavigate()
+  const [amount, setAmount] = useState('75000')
+  const [item, setItem] = useState('laptop')
+  function go(e: React.FormEvent) {
+    e.preventDefault()
+    const n = Number(amount.replace(/[^\d.]/g, ''))
+    if (!n) return
+    navigate(`/assistant?q=${encodeURIComponent(`Should I buy a ₹${n.toLocaleString('en-IN')} ${item.trim() || 'purchase'}?`)}`)
+  }
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-navy-900 p-6 text-white">
-      <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-500/20 blur-2xl" aria-hidden />
-      <FlaskConical className="h-6 w-6 text-brand-500" />
-      <h3 className="mt-4 text-lg font-semibold tracking-tight">Thinking about a big purchase?</h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-300">
-        Simulate it before you spend. Your twin projects the impact on your {inr(balance)} balance over the next 90 days and finds the safest day to buy.
-      </p>
-      <Link to="/simulator" className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-navy-900 transition hover:bg-brand-50">
-        Simulate a ₹75,000 laptop <ArrowRight className="h-4 w-4" />
-      </Link>
-    </div>
+    <section className="mb-5 rounded-2xl bg-navy-900 p-5 text-white sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-emerald-300">Simulate before you pay</p>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight">Thinking of buying something?</h2>
+        </div>
+        <form onSubmit={go} className="flex flex-1 flex-wrap items-center gap-2 sm:max-w-xl">
+          <label className="sr-only" htmlFor="ds-amount">Amount in rupees</label>
+          <div className="flex items-center rounded-xl bg-white/10 px-3 ring-1 ring-white/15 focus-within:ring-emerald-300">
+            <span className="text-slate-300">₹</span>
+            <input id="ds-amount" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-28 bg-transparent px-1.5 py-2 text-sm outline-none" />
+          </div>
+          <label className="sr-only" htmlFor="ds-item">What is it?</label>
+          <input id="ds-item" value={item} maxLength={40} onChange={(e) => setItem(e.target.value)} placeholder="laptop" className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-sm outline-none ring-1 ring-white/15 focus:ring-emerald-300" />
+          <button type="submit" className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-navy-950 hover:bg-emerald-300">
+            Ask FINORA <ArrowRight className="h-4 w-4" />
+          </button>
+        </form>
+      </div>
+      <ol className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[11.5px] text-slate-400">
+        {JOURNEY.map((j, i) => (
+          <li key={j} className={`flex items-center gap-1.5 ${i === 0 ? 'text-emerald-300' : ''}`}>
+            <span className={`flex h-4 w-4 items-center justify-center rounded-full font-mono text-[9.5px] ${i === 0 ? 'bg-emerald-300 text-navy-950' : 'bg-white/10'}`}>{i + 1}</span>{j}
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
