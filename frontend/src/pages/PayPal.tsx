@@ -28,19 +28,24 @@ export default function PayPal() {
   const [syncing, setSyncing] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const orders = useApi(api.checkoutOrders)
+  const [offerReplace, setOfferReplace] = useState(false)
 
   if (pp.loading && !pp.data) return <PageSkeleton />
   if (pp.error) return <ErrorState error={pp.error} onRetry={pp.reload} />
   if (!pp.data) return null
   const d = pp.data
 
-  async function sync() {
-    setSyncing(true); setMsg(null)
+  async function sync(replace = false) {
+    setSyncing(true); setMsg(null); setOfferReplace(false)
     try {
-      const r = await api.paypalSync(180, false)
+      const r = await api.paypalSync(180, replace)
       setMsg({ ok: true, text: `Transaction Search returned ${r.rows} record(s): ${r.imported} new, ${r.skipped_duplicates} already stored.` })
       pp.reload(); await refresh()
-    } catch (e) { setMsg({ ok: false, text: e instanceof ApiError ? e.message : String(e) }); pp.reload() } finally { setSyncing(false) }
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof ApiError ? e.message : String(e) })
+      setOfferReplace(e instanceof ApiError && e.status === 409)
+      pp.reload()
+    } finally { setSyncing(false) }
   }
 
   return (
@@ -71,7 +76,7 @@ export default function PayPal() {
           </div>
           <div className="flex flex-col gap-2">
             {d.configured && (
-              <button disabled={syncing} onClick={sync} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#003087] hover:bg-sky-50 disabled:opacity-60">
+              <button disabled={syncing} onClick={() => void sync()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#003087] hover:bg-sky-50 disabled:opacity-60">
                 <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing…' : d.demo ? 'Sync now (demo)' : 'Sync now'}
               </button>
             )}
@@ -84,7 +89,15 @@ export default function PayPal() {
 
       <IntegrationStatus d={d} orders={orders.data ?? []} />
 
-      {msg && <p role="status" className={`mt-4 rounded-xl p-3 text-sm ${msg.ok ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-700'}`}>{msg.text}</p>}
+      {msg && (
+        <div role="status" className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl p-3 text-sm ${msg.ok ? 'bg-brand-50 text-brand-700' : 'bg-red-50 text-red-700'}`}>
+          <span>{msg.text}</span>
+          {offerReplace && (
+            <button onClick={() => { if (window.confirm('Replace the fictional sample profile with your PayPal records? The sample is removed from your twin.')) void sync(true) }}
+              className="rounded-lg bg-[#003087] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#002366]">Replace the sample with PayPal records</button>
+          )}
+        </div>
+      )}
 
       {d.linked ? (
         <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">

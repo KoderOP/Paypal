@@ -45,12 +45,34 @@ def clear_user_data(db: Session, user: User) -> None:
     user.preferences = prefs
 
 
+class MixedProvenanceError(ValueError):
+    """Fictional sample data and real data would end up in one balance."""
+
+
+def _is_fictional(origin: str, environment: str | None) -> bool:
+    return origin == "sample" or environment == "demo"
+
+
+def _refuse_mixing(db: Session, user: User, origin: str, environment: str | None) -> None:
+    """A fictional profile and real money can't share a ledger: the balance and every forecast would be meaningless."""
+    rows = db.execute(select(Account.origin, Account.environment).join(Transaction).where(Account.user_id == user.id)
+                      .distinct()).all()
+    incoming = _is_fictional(origin, environment)
+    if any(_is_fictional(o, e) != incoming for o, e in rows if o != "paypal_checkout"):
+        raise MixedProvenanceError(
+            "Your twin holds the fictional sample profile; replace it to add real data." if not incoming else
+            "Your twin holds real data; replace it to load the fictional sample profile."
+        )
+
+
 def store_transactions(db: Session, user: User, source_name: str, txns: list[NormalizedTransaction],
                        opening_balance: Decimal | None, replace: bool, data_label: str, *, origin: str,
                        environment: str | None = None) -> dict:
     """Store normalised rows in the account for exactly this (format, origin, environment): provenance never merges."""
     if origin not in ORIGINS:
         raise ValueError(f"unknown origin {origin!r}")
+    if not replace:
+        _refuse_mixing(db, user, origin, environment)
     if replace:
         clear_user_data(db, user)
     had_data = has_data(db, user)

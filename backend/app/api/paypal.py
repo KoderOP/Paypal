@@ -9,7 +9,7 @@ from app.integrations.paypal.client import paypal_runtime
 from app.integrations.paypal.source import PayPalApiError, PayPalNotConfigured, PayPalSource
 from app.schemas.api import ImportResult, PayPalSyncRequest
 from app.services import repository as repo
-from app.services.import_service import store_transactions
+from app.services.import_service import MixedProvenanceError, store_transactions
 
 router = APIRouter(prefix="/integrations/paypal", tags=["paypal"])
 
@@ -96,7 +96,8 @@ def _record_sync(db: Session, environment: str, outcome: str, records: int = 0, 
 def paypal_sync(body: PayPalSyncRequest, db: Session = Depends(get_db)):
     settings, transport = paypal_runtime()
     env = settings.paypal_environment
-    src = PayPalSource(settings, days=body.days, transport=transport, today=repo.today())
+    user = repo.get_primary_user(db)
+    src = PayPalSource(settings, days=body.days, transport=transport, today=repo.today(), home_currency=user.currency)
     try:
         txns = src.fetch()
     except PayPalNotConfigured as exc:
@@ -104,12 +105,24 @@ def paypal_sync(body: PayPalSyncRequest, db: Session = Depends(get_db)):
     except PayPalApiError as exc:
         _record_sync(db, env, "error", message=str(exc)[:200])
         raise HTTPException(502, str(exc))
+    skipped = ", ".join(f"{n} in {c}" for c, n in src.skipped_currencies.items())
     if not txns:
-        _record_sync(db, env, "empty", message=f"No completed transactions in the last {body.days} days.")
-        raise HTTPException(404, f"PayPal returned no completed transactions in the last {body.days} days.")
-    user = repo.get_primary_user(db)
-    result = store_transactions(db, user, "paypal", txns, src.opening_balance, body.replace, "paypal_api",
-                                origin="paypal_api", environment=env)
+        why = f"No usable transactions in the last {body.days} days" + (f" ({skipped} skipped: set PAYPAL_CHECKOUT_FX_RATE "
+                                                                          "for that currency to convert them)." if skipped else ".")
+        _record_sync(db, env, "empty", message=why)
+        raise HTTPException(404, why)
+    try:
+        result = store_transactions(db, user, "paypal", txns, src.opening_balance, body.replace, "paypal_api",
+                                    origin="paypal_api", environment=env)
+    except MixedProvenanceError as exc:
+        _record_sync(db, env, "ok", records=len(txns),
+                     message=f"PayPal returned {len(txns)} record(s); not stored: {exc}")
+        raise HTTPException(409, f"PayPal returned {len(txns)} record(s), not stored. {exc}")
     _record_sync(db, env, "ok", records=len(txns))
-    warnings = [] if src.opening_balance is not None else ["Couldn't read your PayPal balance; balances start from ₹0."]
+    warnings = [] if src.opening_balance is not None else ["Couldn't read your PayPal balance in a convertible currency; it starts from ₹0."]
+    if src.converted:
+        warnings.append(f"{src.converted} record(s) in {settings.paypal_checkout_currency} converted at your rate "
+                        f"{settings.paypal_checkout_fx_rate} (not a PayPal or market rate).")
+    if skipped:
+        warnings.append(f"Skipped {skipped}: no conversion rate configured for that currency.")
     return ImportResult(format="paypal_api", source="paypal", warnings=warnings, **result)

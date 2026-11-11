@@ -35,3 +35,6 @@ rejects any figure the engine didn't produce, and the response says when that ha
 **If asked about Pay Later:** FINORA simulates Pay in 4 / Pay Monthly from illustrative terms to compare options. Real
 eligibility, APR and schedule are PayPal's decision on its approval page. FINORA records the simulated schedule and
 labels it as such.
+
+**Don't sync PayPal into the sample profile during the demo.** FINORA refuses to mix fictional and real money in one balance
+(the hub offers *Replace the sample with PayPal records*). To show Transaction Search, do it last, or on a separate run.

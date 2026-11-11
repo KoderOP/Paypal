@@ -19,7 +19,7 @@ import httpx
 from app.core.config import Settings
 from app.core.money import money
 from app.data.categorize import categorize
-from app.data.sources.base import NormalizedTransaction
+from app.data.sources.base import FxInfo, NormalizedTransaction
 
 EVENT_LABELS = {
     "T00": "PayPal payment", "T01": "Non-payment fee", "T02": "Currency conversion", "T03": "Bank deposit",
@@ -27,6 +27,10 @@ EVENT_LABELS = {
     "T11": "Reversal", "T12": "Adjustment", "T15": "Hold", "T17": "Bank deposit", "T22": "Bank transfer",
 }
 WINDOW_DAYS = 31
+# Money moved between your own accounts (deposits, withdrawals, transfers, adjustments, opening funding): not income or
+# spending. Stored as "Transfer", which the twin excludes from income and spending statistics.
+TRANSFER_EVENTS = {"T03", "T04", "T07", "T12", "T17", "T22"}
+TRANSFER_SUBJECTS = ("initial balance",)
 
 
 class PayPalNotConfigured(RuntimeError):
@@ -41,13 +45,25 @@ class PayPalSource:
     name = "paypal"
 
     def __init__(self, settings: Settings, days: int = 180, transport: httpx.BaseTransport | None = None,
-                 today: date | None = None):
+                 today: date | None = None, home_currency: str = "INR"):
         self.settings = settings
         self.days = days
         self.transport = transport
         self.today = today or date.today()
+        self.home_currency = home_currency.upper()
         self.opening_balance: Decimal | None = None
         self.currency: str | None = None
+        self.converted = 0  # records converted at the configured rate
+        self.skipped_currencies: dict[str, int] = {}  # records skipped: no rate for their currency
+
+    def _rate_for(self, currency: str) -> Decimal | None:
+        """Home-currency units per 1 `currency`, or None. Only the user-configured rate is used; never a market rate."""
+        if currency == self.home_currency:
+            return Decimal("1")
+        s = self.settings
+        if s.paypal_checkout_fx_rate and (s.paypal_checkout_currency or "").upper() == currency:
+            return Decimal(s.paypal_checkout_fx_rate)
+        return None
 
     @property
     def configured(self) -> bool:
@@ -121,15 +137,16 @@ class PayPalSource:
                                      {"as_of_time": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
                 primary = next((b for b in balances.get("balances", []) if b.get("primary")), None) or (balances.get("balances") or [None])[0]
                 if primary:
-                    current = Decimal(primary["total_balance"]["value"])
-                    self.currency = primary["total_balance"].get("currency_code")
-                    self.opening_balance = money(current - sum((t.amount for t in txns), Decimal("0")))
+                    self.currency = (primary["total_balance"].get("currency_code") or self.home_currency).upper()
+                    rate = self._rate_for(self.currency)
+                    if rate is not None:  # otherwise leave it unknown rather than read USD as rupees
+                        current = money(Decimal(primary["total_balance"]["value"]) * rate)
+                        self.opening_balance = money(current - sum((t.amount for t in txns), Decimal("0")))
             except (PayPalApiError, KeyError, ValueError):
                 self.opening_balance = None
         return txns
 
-    @staticmethod
-    def _normalise(detail: dict) -> NormalizedTransaction | None:
+    def _normalise(self, detail: dict) -> NormalizedTransaction | None:
         info = detail.get("transaction_info", {})
         if info.get("transaction_status") not in ("S", None):
             return None
@@ -140,6 +157,17 @@ class PayPalSource:
         value = money(Decimal(amount))
         if value == 0:
             return None
+        currency = (info.get("transaction_amount", {}).get("currency_code") or self.home_currency).upper()
+        rate = self._rate_for(currency)
+        if rate is None:
+            self.skipped_currencies[currency] = self.skipped_currencies.get(currency, 0) + 1
+            return None
+        fx = None
+        if currency != self.home_currency:
+            fee = money(Decimal(info.get("fee_amount", {}).get("value") or "0"))
+            fx = FxInfo(currency, value, fee, money(value + fee), rate, "configured_rate")
+            value = money((value + fee) * rate)
+            self.converted += 1
         posted = datetime.fromisoformat(info["transaction_initiation_date"].replace("Z", "+00:00")).date()
         payer = detail.get("payer_info", {}).get("payer_name", {}).get("alternate_full_name")
         items = detail.get("cart_info", {}).get("item_details") or []
@@ -147,4 +175,7 @@ class PayPalSource:
         label = EVENT_LABELS.get((info.get("transaction_event_code") or "")[:3], "PayPal transaction")
         name = payer or info.get("transaction_subject") or item or label
         desc = f"{label} · {item or info.get('transaction_note') or name}"
-        return NormalizedTransaction(f"pp-{txn_id}", posted, desc[:255], name[:120], categorize(f"{name} {desc}", value > 0), value)
+        code = (info.get("transaction_event_code") or "")[:3]
+        subject = (info.get("transaction_subject") or "").strip().lower()
+        category = "Transfer" if code in TRANSFER_EVENTS or subject in TRANSFER_SUBJECTS else categorize(f"{name} {desc}", value > 0)
+        return NormalizedTransaction(f"pp-{txn_id}", posted, desc[:255], name[:120], category, value, fx)

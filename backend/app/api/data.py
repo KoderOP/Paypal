@@ -13,7 +13,7 @@ from app.data.models import Account, Transaction
 from app.data.sources.files import FORMAT_SOURCE, CsvValidationError, parse_file
 from app.schemas.api import DemoFileOut, ImportResult, StatusOut
 from app.services import repository as repo
-from app.services.import_service import clear_user_data, store_transactions
+from app.services.import_service import MixedProvenanceError, clear_user_data, store_transactions
 
 router = APIRouter(tags=["data"])
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -81,9 +81,12 @@ async def import_file(
     source = FORMAT_SOURCE[parsed.format]
     user = repo.get_primary_user(db)
     origin = "sample" if is_sample_content(content, file.filename) else "user_import"
-    result = store_transactions(db, user, source, parsed.transactions,
-                                opening if opening is not None else parsed.opening_balance, replace, parsed.format,
-                                origin=origin)
+    try:
+        result = store_transactions(db, user, source, parsed.transactions,
+                                    opening if opening is not None else parsed.opening_balance, replace, parsed.format,
+                                    origin=origin)
+    except MixedProvenanceError as exc:
+        raise HTTPException(409, str(exc))
     warnings = list(parsed.warnings)
     if origin == "sample":
         warnings.append("This is FINORA's synthetic sample file, so it's labelled as sample data, not as real records.")
@@ -106,9 +109,12 @@ def load_sample(body: LoadSample, db: Session = Depends(get_db)):
         raise HTTPException(404, "Sample file not found")
     parsed = parse_file(content, "auto")
     source = FORMAT_SOURCE[parsed.format]
-    result = store_transactions(db, repo.get_primary_user(db), source, parsed.transactions,
-                                parsed.opening_balance if parsed.opening_balance is not None else opening, body.replace,
-                                parsed.format, origin="sample")
+    try:
+        result = store_transactions(db, repo.get_primary_user(db), source, parsed.transactions,
+                                    parsed.opening_balance if parsed.opening_balance is not None else opening, body.replace,
+                                    parsed.format, origin="sample")
+    except MixedProvenanceError as exc:
+        raise HTTPException(409, str(exc))
     return ImportResult(format=parsed.format, source=source, warnings=[], **result)
 
 

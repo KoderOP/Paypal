@@ -89,6 +89,10 @@ offline mode and the safety net. Its accuracy on held-out paraphrases is measure
 | Subscriptions v1 | link, refresh, cancel, suspend, activate (each needs `confirm: true`) |
 | Log in with PayPal (OIDC) | optional identity; no feature requires it |
 
+**Provenance of payments.** A capture is written to the `paypal_checkout` account for its environment, never into sample or
+imported data. A matching "Planned:" obligation is removed so the purchase isn't counted twice. A data reset keeps checkout
+orders as history and marks captured ones `cleared_from_twin`.
+
 **The payment gate.** `POST /checkout/orders` needs `acknowledged: true`; the simulation is re-run server-side and
 snapshotted on the order. The buyer approves on PayPal, which redirects to `/checkout/return`. Then
 `POST /checkout/orders/{id}/capture` needs `confirm: true`. After capture, a full payment is recorded as a PayPal transaction
@@ -108,7 +112,11 @@ client code, with FINORA-hosted buyer pages labelled "PayPal demo mode · no rea
 ## 5. Data model
 ```
 users              id · name · currency · preferences(JSON)
-accounts           id · user_id · name · institution · source · opening_balance NUMERIC(14,2) · opening_date
+accounts           id · user_id · name · institution · source (format family) · origin (provenance) · environment
+                   · opening_balance NUMERIC(14,2) · opening_date
+                   origin ∈ sample | user_import | paypal_api | paypal_checkout | unknown; environment ∈ sandbox | live | demo
+                   One account per (source, origin, environment): provenance never merges. Columns added by
+                   ensure_columns() at startup for older databases (old rows → origin 'unknown').
 transactions       id · account_id · posted_on · description · merchant · category · amount NUMERIC(14,2) · source · external_id
                    UNIQUE(account_id, external_id)   INDEX(account_id, posted_on)
 fx_details         transaction_id · currency · gross · fee · net · rate · rate_source
@@ -160,6 +168,8 @@ All endpoints are prefixed with `/api`. Interactive docs are at `http://localhos
 | GET / POST | `/assistant/status` · `/assistant/chat` | AI assistant (Groq tool calling + grounding guardrail + trace; deterministic planner without a key) |
 | GET / PUT | `/settings` | Read settings / update `name` and/or `safety_buffer` |
 | GET | `/evals` | Committed evaluation results (read-only) |
+| POST | `/data/sample` | `{file_id, replace}`: load the fictional sample profile, generated server-side, stored as `origin=sample` |
+| POST | `/integrations/paypal/check-auth` | Request a PayPal OAuth token now; proves the credentials work, reads nothing |
 
 Money is computed as `Decimal` and serialised as a JSON number with 2 decimal places. The client
 only formats values; it never does financial arithmetic.

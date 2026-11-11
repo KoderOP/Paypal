@@ -153,3 +153,15 @@ def test_agent_says_when_the_item_was_already_paid(client):
         out = run_tool("compare_payment_options", {"amount": 75000, "label": "Laptop"}, db, repo.get_primary_user(db))
     assert out.summary["already_paid"]["status"] == "captured" and out.summary["already_paid"]["paid_on"]
     assert out.lines[0].startswith("Note: you already paid for Laptop") and "buying another" in out.lines[0]
+
+
+def test_fictional_and_real_data_never_share_a_ledger(client):
+    # A real file added to the sample profile would blend fictional and real money into one balance.
+    own = "date,description,amount,category,merchant\n2026-10-01,Salary,50000,Income,Employer\n"
+    r = client.post("/api/data/import", files={"file": ("mine.csv", own, "text/csv")}, data={"replace": "false"})
+    assert r.status_code == 409 and "fictional sample profile" in r.json()["detail"]
+    # Replacing works, and then loading the sample on top of real data is refused the same way.
+    assert client.post("/api/data/import", files={"file": ("mine.csv", own, "text/csv")},
+                       data={"replace": "true", "opening_balance": "100"}).json()["origin"] == "user_import"
+    r = client.post("/api/data/sample", json={"file_id": "paypal_activity", "replace": False})
+    assert r.status_code == 409 and "real data" in r.json()["detail"]

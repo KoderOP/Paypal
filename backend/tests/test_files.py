@@ -97,3 +97,55 @@ def test_paypal_api_source_maps_transactions():
     t = txns[0]
     assert t.external_id == "pp-9XY" and t.amount == Decimal("-649.00") and t.category == "Subscriptions"
     assert src.opening_balance == Decimal("10649.00")
+
+
+def _usd_search(balance_currency: str = "USD"):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/oauth2/token":
+            return httpx.Response(200, json={"access_token": "tok"})
+        if request.url.path == "/v1/reporting/transactions" and request.url.params["start_date"].startswith("2026-10-04"):
+            return httpx.Response(200, json={"total_pages": 1, "transaction_details": [
+                {"transaction_info": {"transaction_id": "USD1", "transaction_event_code": "T0006",
+                                      "transaction_initiation_date": "2026-10-12T10:00:00+0000",
+                                      "transaction_amount": {"currency_code": "USD", "value": "100.00"},
+                                      "fee_amount": {"currency_code": "USD", "value": "-3.00"},
+                                      "transaction_status": "S"}},
+                {"transaction_info": {"transaction_id": "EUR1", "transaction_initiation_date": "2026-10-12T11:00:00+0000",
+                                      "transaction_amount": {"currency_code": "EUR", "value": "-10.00"},
+                                      "transaction_status": "S"}},
+            ]})
+        if request.url.path == "/v1/reporting/transactions":
+            return httpx.Response(200, json={"total_pages": 1, "transaction_details": []})
+        if request.url.path == "/v1/reporting/balances":
+            return httpx.Response(200, json={"balances": [{"primary": True, "total_balance": {"currency_code": balance_currency, "value": "5000.00"}}]})
+        return httpx.Response(404)
+    return httpx.MockTransport(handler)
+
+
+def test_transaction_search_converts_foreign_currency_only_with_the_configured_rate():
+    # Regression: a USD 5,000 sandbox balance was stored as ₹5,000.
+    s = Settings(paypal_client_id="id", paypal_client_secret="secret", paypal_checkout_currency="USD",
+                 paypal_checkout_fx_rate=Decimal("84"), _env_file=None)
+    src = PayPalSource(s, days=30, transport=_usd_search(), today=TODAY)
+    txns = src.fetch()
+    assert [t.external_id for t in txns] == ["pp-USD1"]          # EUR has no rate: skipped, not stored at face value
+    assert txns[0].amount == Decimal("8148.00")                  # (100 − 3 fee) USD × 84
+    assert txns[0].fx.currency == "USD" and txns[0].fx.rate == Decimal("84") and txns[0].fx.rate_source == "configured_rate"
+    assert src.skipped_currencies == {"EUR": 1} and src.converted == 1
+    assert src.opening_balance == Decimal("420000.00") - Decimal("8148.00")  # balance converted too
+
+
+def test_transaction_search_without_a_rate_skips_foreign_rows_and_balance():
+    s = Settings(paypal_client_id="id", paypal_client_secret="secret", paypal_checkout_currency=None,
+                 paypal_checkout_fx_rate=None, _env_file=None)
+    src = PayPalSource(s, days=30, transport=_usd_search(), today=TODAY)
+    assert src.fetch() == [] and src.skipped_currencies == {"USD": 1, "EUR": 1} and src.opening_balance is None
+
+
+def test_funding_events_are_transfers_not_income():
+    src = PayPalSource(Settings(paypal_client_id="id", paypal_client_secret="secret", _env_file=None))
+    t = src._normalise({"transaction_info": {"transaction_id": "IB1", "transaction_subject": "Initial balance",
+                                             "transaction_initiation_date": "2026-11-11T00:00:00+0000",
+                                             "transaction_amount": {"currency_code": "INR", "value": "5000.00"},
+                                             "transaction_status": "S"}})
+    assert t.category == "Transfer"
