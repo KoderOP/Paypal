@@ -9,7 +9,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
-import { fmtShort, inr, inrCompact, signedInr } from '../lib/format'
+import { fmtShort, inr, inrCompact, signedInr, inrAxis } from '../lib/format'
 import { describeChange } from '../lib/scenarios'
 import type { NamedScenario, ScenarioChange, ScenarioComparison } from '../lib/types'
 
@@ -165,7 +165,7 @@ function Results({ result, colors }: { result: ScenarioComparison; colors: strin
             <ComposedChart data={rows} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="var(--grid)" />
               <XAxis dataKey="on" tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} minTickGap={40} />
-              <YAxis tickFormatter={inrCompact} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={56} />
+              <YAxis tickFormatter={inrAxis} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={84} />
               <Tooltip cursor={{ stroke: 'var(--axis)', strokeDasharray: '3 3' }} content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const r = payload[0].payload as Record<string, number | string>

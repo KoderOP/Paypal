@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { fmtMonth, inr, inrCompact, signedInr } from '../../lib/format'
+import { fmtMonth, inr, signedInr, inrAxis } from '../../lib/format'
 import type { MonthSummary } from '../../lib/types'
 import { TooltipRow, TooltipShell } from './ChartTooltip'
 
@@ -23,7 +23,7 @@ export function MonthlyBars({ months, height = 240 }: { months: MonthSummary[]; 
           <BarChart data={data} barGap={2} barCategoryGap="28%" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--grid)" />
             <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} />
-            <YAxis tickFormatter={inrCompact} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={52} />
+            <YAxis tickFormatter={inrAxis} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={84} />
             <Tooltip content={<MonthTooltip />} cursor={{ fill: '#0b1b3a', fillOpacity: 0.04 }} />
             {SERIES.map((s) => <Bar key={s.key} dataKey={s.key} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={18} />)}
           </BarChart>

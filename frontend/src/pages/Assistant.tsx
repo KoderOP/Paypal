@@ -1,5 +1,5 @@
 import { AlertTriangle, Bookmark, Bot, Calculator, CheckCircle2, ChevronRight, CornerDownRight, Cpu, Loader2, Lock, SendHorizontal, ShieldCheck, ShieldAlert, Sparkles, User, Wrench } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ChartLegendItem } from '../components/charts/CashflowChart'
@@ -12,23 +12,15 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { useDataStatus } from '../context/DataStatus'
 import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
-import { fmtShort, inr, inrCompact, signedInr } from '../lib/format'
+import { fmtShort, inr, inrCompact, signedInr, inrAxis } from '../lib/format'
 import { describeChange } from '../lib/scenarios'
 import type { ChatContext, ChatResponse, ChatTurn, CheckoutProposal, CrossBorder, ScenarioCard, ScenarioChange, SnapshotCard, ToolCall, TraceStep } from '../lib/types'
 
-const JOURNEY = [
-  'Should I buy a ₹75,000 laptop?',
-  'What’s the most I can spend this month?',
-  'When can I safely buy a ₹1.2 lakh vacation?',
-]
-const SUGGESTIONS = [
-  'What if I cancel three subscriptions?',
-  'What if I add a ₹499/month gym membership?',
-  'What if my income is delayed by 15 days?',
-  'What if I lose my job for 2 months?',
-  'How resilient are my finances?',
-  'What if USD/INR drops 3%?',
-  'How much am I losing to PayPal fees?',
+// A few useful starting points, grouped by what people actually ask about.
+const PROMPT_GROUPS: { title: string; prompts: string[] }[] = [
+  { title: 'Major purchases', prompts: ['Should I buy a ₹75,000 laptop?', 'When can I safely buy a ₹1.2 lakh vacation?'] },
+  { title: 'Cash-flow limits', prompts: ['What’s the most I can spend this month?', 'What if my income is delayed by 15 days?'] },
+  { title: 'Recurring subscriptions', prompts: ['What if I cancel three subscriptions?', 'What if I add a ₹499/month gym membership?'] },
 ]
 // One-tap follow-ups after a payment comparison: the agent drafts a checkout, the user still confirms.
 const PAY_FOLLOWUPS = ['Go ahead with PayPal Pay in 4', 'Pay in full now with PayPal', 'And what if my salary is also 10 days late?']
@@ -76,29 +68,27 @@ export default function Assistant() {
   const offerPay = !busy && last?.res?.context?.tool === 'compare_payment_options'
   return (
     <>
-      <PageHeader eyebrow="Ask FINORA" title="Simulate before you pay"
-        description="Ask about any purchase or what-if. The agent picks engine tools, every figure is checked against the engine, and it can draft a PayPal checkout that only you can confirm."
+      <PageHeader eyebrow="Ask FINORA" title="Know the impact before money moves"
+        description="Ask about a purchase or a what-if. FINORA runs the numbers on your forecast, checks every figure, and can prepare a PayPal checkout that only you can authorise."
         actions={mode && (mode === 'llm'
-          ? <Badge tone="green" icon={<Sparkles className="h-3 w-3" />}>{status.data?.provider === 'groq' ? 'Groq' : status.data?.provider} · {status.data?.model}</Badge>
-          : <Badge tone="neutral" icon={<Calculator className="h-3 w-3" />}>Deterministic planner · no AI key</Badge>)} />
+          ? <Badge tone="green" icon={<Sparkles className="h-3 w-3" />}>AI assistant</Badge>
+          : <Badge tone="neutral" icon={<Calculator className="h-3 w-3" />}>Offline mode · exact answers to common questions</Badge>)} />
 
       <div className="space-y-5">
         {msgs.length === 0 && (
           <Card>
-            <CardHeader title="Start with a decision" icon={<Sparkles className="h-4 w-4 text-brand-600" />}
-              subtitle={mode === 'rules' ? 'No GROQ_API_KEY is set, so a deterministic planner answers these exactly. Add a key for free-form questions.' : 'Ask in your own words. Follow-ups build on the previous answer.'} />
-            <div className="grid gap-2 sm:grid-cols-3">
-              {JOURNEY.map((s, i) => (
-                <button key={s} onClick={() => void send(s)} className="group rounded-xl border border-slate-200 p-3 text-left transition hover:border-navy-900 hover:bg-slate-50">
-                  <span className="font-mono text-[10.5px] text-navy-400">0{i + 1}</span>
-                  <p className="mt-0.5 text-[13.5px] font-medium text-navy-900">{s}</p>
-                </button>
-              ))}
-            </div>
-            <p className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wide text-navy-400">Or explore a what-if</p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => void send(s)} className="rounded-full border border-slate-200 px-3 py-1.5 text-left text-[13px] text-navy-700 transition hover:border-navy-900 hover:bg-slate-50">{s}</button>
+            <CardHeader title="What would you like to check?" icon={<Sparkles className="h-4 w-4 text-brand-600" />}
+              subtitle={mode === 'rules' ? 'Offline mode answers these common questions exactly. With an AI key, you can ask in your own words.' : 'Ask in your own words. Follow-up questions build on the previous answer.'} />
+            <div className="grid gap-4 sm:grid-cols-3">
+              {PROMPT_GROUPS.map((g) => (
+                <div key={g.title}>
+                  <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-navy-400">{g.title}</p>
+                  <div className="flex flex-col gap-1.5">
+                    {g.prompts.map((q) => (
+                      <button key={q} onClick={() => void send(q)} className="rounded-lg border border-slate-200 px-3 py-2 text-left text-[13.5px] text-navy-800 transition hover:border-[#003087]/40 hover:bg-slate-50">{q}</button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </Card>
@@ -155,7 +145,6 @@ function contextLabel(c: ChatContext): string {
 }
 
 function AssistantMessage({ m, onChanged }: { m: Msg; onChanged: () => void }) {
-  const lines = useMemo(() => m.content.split('\n').filter(Boolean), [m.content])
   return (
     <div className="flex gap-2.5">
       <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50"><Bot className="h-3.5 w-3.5 text-brand-700" /></span>
@@ -164,19 +153,15 @@ function AssistantMessage({ m, onChanged }: { m: Msg; onChanged: () => void }) {
           <p role="alert" className="rounded-2xl rounded-tl-md bg-red-50 px-4 py-3 text-sm text-red-700">{m.error}</p>
         ) : (
           <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3">
-            <div className="space-y-1.5 text-sm leading-relaxed text-navy-800">
-              {lines.map((l, i) => i === 0 ? <p key={i} className="font-medium text-navy-900">{l}</p> : <p key={i}>{l}</p>)}
-            </div>
+            <AnswerText text={m.content} />
             {m.res?.built_on && (
               <p className="mt-2 flex items-center gap-1 text-[12px] text-navy-500"><CornerDownRight className="h-3.5 w-3.5" /> Built on your previous question: kept {m.res.built_on}.</p>
             )}
             {m.res && (
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5">
-                {m.res.guardrail === 'replaced'
-                  ? <Badge tone="amber" icon={<ShieldAlert className="h-3 w-3" />}>AI draft rejected · rewritten from engine output</Badge>
-                  : <Badge tone="green" icon={<ShieldCheck className="h-3 w-3" />}>{groundingLabel(m.res)}</Badge>}
-                <Badge>{m.res.mode === 'llm' ? `${m.res.provider === 'groq' ? 'Groq' : m.res.provider} · ${m.res.model}` : 'Deterministic planner'}</Badge>
-                {m.res.note && <p className="w-full text-[11px] text-navy-400">{m.res.note}</p>}
+                <VerificationBadge res={m.res} />
+                {m.res.mode === 'rules' && m.res.note && <Badge tone="neutral">Answered in offline mode</Badge>}
+                {m.res.guardrail === 'replaced' && <p className="w-full text-[11.5px] text-navy-500">The AI’s draft included a figure the calculations didn’t produce, so this answer uses the calculated wording instead.</p>}
                 <TracePanel res={m.res} />
               </div>
             )}
@@ -251,7 +236,7 @@ function ScenarioView({ card, changes }: { card: ScenarioCard; changes: Scenario
           <ComposedChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--grid)" />
             <XAxis dataKey="on" tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} minTickGap={40} />
-            <YAxis tickFormatter={inrCompact} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={56} />
+            <YAxis tickFormatter={inrAxis} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={84} />
             <Tooltip cursor={{ stroke: 'var(--axis)', strokeDasharray: '3 3' }} content={({ active, payload }) => {
               if (!active || !payload?.length) return null
               const r = payload[0].payload as (typeof rows)[number]
@@ -299,10 +284,35 @@ function SnapshotView({ card }: { card: SnapshotCard }) {
   )
 }
 
-function groundingLabel(r: ChatResponse): string {
-  const c = r.grounding?.checked
-  const n = c ? c.money + c.percent + c.dates : 0
-  return n ? `${n} figure${n === 1 ? '' : 's'} checked against the engine · 0 invented` : 'Grounded in engine results'
+/** Shown only when the grounding check actually passed for the answer on screen. */
+function VerificationBadge({ res }: { res: ChatResponse }) {
+  if (!res.grounding?.ok) return null
+  return res.guardrail === 'replaced'
+    ? <Badge tone="amber" icon={<ShieldAlert className="h-3 w-3" />}>Rewritten from verified calculations</Badge>
+    : <Badge tone="green" icon={<ShieldCheck className="h-3 w-3" />}>Verified against financial calculations</Badge>
+}
+
+/** Renders the assistant's text: bold, bullet and numbered lines, without showing raw Markdown symbols. */
+function AnswerText({ text }: { text: string }) {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+  const inline = (l: string) => l.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, k) =>
+    part.startsWith('**') && part.endsWith('**') ? <strong key={k} className="font-semibold text-navy-900">{part.slice(2, -2)}</strong>
+      : <span key={k}>{part.replace(/\*\*/g, '').replace(/(^|\s)\*(\S)/g, '$1$2').replace(/(\S)\*(\s|$)/g, '$1$2')}</span>)
+  const blocks: React.ReactNode[] = []
+  let list: string[] = []
+  const flush = () => {
+    if (list.length) blocks.push(<ul key={`l${blocks.length}`} className="ml-1 space-y-1">{list.map((x, k) => <li key={k} className="flex gap-2"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-navy-400" />{<span>{inline(x)}</span>}</li>)}</ul>)
+    list = []
+  }
+  lines.forEach((l, i) => {
+    const bullet = l.match(/^(?:[-•*]|\d+[.)])\s+(.*)$/)
+    if (bullet) { list.push(bullet[1]); return }
+    flush()
+    const clean = l.replace(/^#{1,6}\s+/, '')
+    blocks.push(<p key={`p${i}`} className={i === 0 ? 'font-medium text-navy-900' : ''}>{inline(clean)}</p>)
+  })
+  flush()
+  return <div className="space-y-2 text-sm leading-relaxed text-navy-800">{blocks}</div>
 }
 
 const STEP_ICON: Record<TraceStep['type'], typeof Cpu> = { llm: Cpu, tool: Wrench, guardrail: ShieldCheck, plan: Calculator, fallback: AlertTriangle }
@@ -314,8 +324,7 @@ function TracePanel({ res }: { res: ChatResponse }) {
     <details className="group w-full">
       <summary className="flex cursor-pointer list-none items-center gap-1 text-[11.5px] font-medium text-navy-500 hover:text-navy-900">
         <ChevronRight className="h-3.5 w-3.5 transition group-open:rotate-90" />
-        How this answer was produced · {res.trace.filter((t) => t.type === 'tool').length} tool call(s) · {(res.latency_ms / 1000).toFixed(1)} s
-        {res.usage && <> · {res.usage.prompt_tokens + res.usage.completion_tokens} tokens</>}
+        Technical details
       </summary>
       <ol className="mt-2 space-y-1.5 border-l border-slate-200 pl-3">
         {res.trace.map((t, i) => {
@@ -419,7 +428,7 @@ function CheckoutProposalCard({ p }: { p: CheckoutProposal }) {
           )}
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <button onClick={() => void go()} disabled={!ready || state === 'busy'}
-              className="inline-flex items-center gap-2 rounded-full bg-[#ffc439] px-5 py-2 text-sm font-bold text-[#003087] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40">
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#003087] px-5 text-sm font-semibold text-white transition hover:bg-[#002366] disabled:cursor-not-allowed disabled:opacity-40">
               {state === 'busy' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Continue to PayPal
             </button>
             <p className="text-[11.5px] text-navy-400">You approve on PayPal, then confirm the capture in FINORA. Nothing is charged before that.</p>

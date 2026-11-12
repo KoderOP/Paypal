@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Area, CartesianGrid, ComposedChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { fmtShort, inr, inrCompact } from '../../lib/format'
+import { fmtShort, inr, inrCompact, inrAxis } from '../../lib/format'
 import type { CashEvent, Forecast } from '../../lib/types'
 import { Segmented } from '../ui/Segmented'
 import { TooltipEvents, TooltipRow, TooltipShell, tooltipDate } from './ChartTooltip'
@@ -52,7 +52,7 @@ export function CashflowChart({ history, forecast, height = 320 }: { history: { 
             </defs>
             <CartesianGrid vertical={false} stroke="var(--grid)" />
             <XAxis dataKey="on" tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} minTickGap={40} />
-            <YAxis tickFormatter={inrCompact} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={56} />
+            <YAxis tickFormatter={inrAxis} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={84} />
             <Tooltip content={<CashTooltip />} cursor={{ stroke: 'var(--axis)', strokeDasharray: '3 3' }} />
             <ReferenceLine y={buffer} stroke="var(--axis)" strokeDasharray="4 4" />
             <ReferenceLine x={today} stroke="#0b1b3a" strokeOpacity={0.35} label={{ value: 'Today', position: 'insideTopLeft', fontSize: 11, fill: '#52607d' }} />

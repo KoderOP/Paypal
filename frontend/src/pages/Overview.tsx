@@ -202,7 +202,7 @@ function DecisionStrip() {
     <section className="mb-5 rounded-2xl bg-navy-900 p-5 text-white sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-emerald-300">Simulate before you pay</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Know the impact before money moves</p>
           <h2 className="mt-1 text-lg font-semibold tracking-tight">Thinking of buying something?</h2>
         </div>
         <form onSubmit={go} className="flex flex-1 flex-wrap items-center gap-2 sm:max-w-xl">

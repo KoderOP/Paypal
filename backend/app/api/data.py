@@ -123,3 +123,39 @@ def clear_data(db: Session = Depends(get_db)):
     user = repo.get_primary_user(db)
     clear_user_data(db, user)
     db.commit()
+
+
+@router.get("/demo-preview")
+def demo_preview(amount: Decimal = Decimal("75000"), label: str = "Laptop"):
+    """The landing page's payment-impact preview, computed — not drawn.
+
+    Runs the unchanged engine (build_profile → compare_payment_options) on FINORA's fictional sample profile in memory,
+    with the default assumptions. Reads and writes no database, so it works before any data is loaded and never touches
+    the user's twin. Every figure in the response is engine output.
+    """
+    from app.engine.payment_options import compare_payment_options
+    from app.engine.twin import build_profile
+    from app.engine.types import Assumptions, Txn
+
+    if not (Decimal("1") <= amount <= Decimal("10000000")):
+        raise HTTPException(422, "amount must be between 1 and 1,00,00,000")
+    s = get_settings()
+    today = repo.today()
+    _, content, opening = render("paypal_activity", today, s.demo_seed)
+    parsed = parse_file(content, "auto")
+    txns = [Txn(posted_on=t.posted_on, description=t.description, merchant=t.merchant, category=t.category, amount=t.amount)
+            for t in parsed.transactions]
+    start = parsed.opening_balance if parsed.opening_balance is not None else opening
+    balance = start + sum((t.amount for t in txns), Decimal("0"))
+    a = Assumptions(horizon_days=s.forecast_horizon_days, safety_buffer=s.default_safety_buffer)
+    c = compare_payment_options(build_profile(txns, balance, today, None, a), a, amount, label[:40] or "Purchase")
+    opts = [{"id": o.id, "name": o.name, "kind": o.kind, "safe": o.safe, "recommended": o.recommended,
+             "illustrative_terms": o.kind == "pay_later",
+             "payments": [{"on": p.on.isoformat(), "amount": float(p.amount)} for p in o.payments],
+             "min_balance": float(o.min_balance), "min_balance_date": o.min_balance_date.isoformat(),
+             "days_below_buffer": o.days_below_buffer, "extra_cost": float(o.extra_cost)} for o in c.options]
+    return {"sample": True, "as_of": today.isoformat(), "transactions": len(txns), "current_balance": float(balance),
+            "amount": float(amount), "label": c.label, "safety_buffer": float(a.safety_buffer),
+            "baseline_min_balance": float(min(c.baseline_series)),
+            "recommendation": {"option_id": c.recommendation.option_id, "headline": c.recommendation.headline},
+            "options": opts}

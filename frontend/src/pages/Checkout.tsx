@@ -117,7 +117,7 @@ export default function Checkout() {
                   : 'Your twin now includes this payment, labelled with its PayPal source, so your balance and forecast are updated.'}
               </p>
               <div className="mt-3 flex gap-3 text-[13px] font-semibold">
-                <Link to="/" className="hover:underline">See your updated forecast →</Link>
+                <Link to="/overview" className="hover:underline">See your updated forecast →</Link>
                 <Link to="/simulator" className="hover:underline">Back to simulator</Link>
               </div>
             </div>

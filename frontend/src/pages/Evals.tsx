@@ -182,6 +182,7 @@ export default function Evals() {
                   “Fallback” means a provider error was answered by the offline planner. Benchmark questions run on the fictional sample profile.
                 </p>
               )}
+              {a && m === 'llm' && <FailureCases a={a} />}
               {a ? <AgentTable a={a} /> : (
                 <p className="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-[13px] text-navy-500">
                   Not run in this build: it needs a <code className="font-mono">GROQ_API_KEY</code>. Run <code className="font-mono">python -m evals.agent_eval --mode llm --tpm 8000</code>; results appear here.
@@ -192,5 +193,32 @@ export default function Evals() {
         })}
       </div>
     </>
+  )
+}
+
+/** Every case that missed, fell back or was rewritten, with the recorded reason. Totals alone hide this. */
+function FailureCases({ a }: { a: AgentEval }) {
+  const rows = a.cases.filter((c) => !c.args_ok || c.mode === 'rules' || c.guardrail === 'replaced')
+  if (!rows.length) return null
+  const kind = (c: AgentEval['cases'][number]) => c.mode === 'rules' ? 'Fallback to offline planner' : !c.tool_ok ? 'Wrong tool' : !c.args_ok ? 'Wrong arguments' : 'Draft rewritten by guardrail'
+  return (
+    <details className="mb-4 rounded-xl border border-slate-200 p-3">
+      <summary className="cursor-pointer text-[13px] font-semibold text-navy-900">Known failure cases in this run ({rows.length} of {a.cases.length})</summary>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full min-w-[620px] text-[12.5px]">
+          <thead><tr className="border-b border-slate-200 text-left text-navy-500"><th className="py-1.5 pr-2 font-medium">Case</th><th className="py-1.5 pr-2 font-medium">Question</th><th className="py-1.5 pr-2 font-medium">What happened</th><th className="py-1.5 font-medium">Detail</th></tr></thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((c) => (
+              <tr key={c.id} className="align-top">
+                <td className="py-1.5 pr-2 font-mono text-[11px] text-navy-500">{c.id}{c.paraphrase && <span className="ml-1 text-amber-700">held-out</span>}</td>
+                <td className="py-1.5 pr-2 text-navy-800">{c.question}</td>
+                <td className="py-1.5 pr-2"><Badge tone={c.mode === 'rules' || c.guardrail === 'replaced' ? 'amber' : 'red'}>{kind(c)}</Badge></td>
+                <td className="py-1.5 text-navy-500">{c.why || (c.mode === 'rules' ? 'Provider error; the offline planner answered. This run did not record the error text.' : c.guardrail === 'replaced' ? 'Final answer still grounded (engine wording).' : '')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   )
 }

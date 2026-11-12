@@ -10,15 +10,15 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, PageSkeleton } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { api } from '../lib/api'
-import { fmtDate, fmtShort, inr, inrCompact, pct } from '../lib/format'
+import { fmtDate, fmtShort, inr, pct, inrAxis } from '../lib/format'
 import { describeChange } from '../lib/scenarios'
 import type { StressReport } from '../lib/types'
 import { ProvenanceTag } from '../components/Provenance'
 
 const RESILIENCE = {
-  strong: { label: 'Strong', tone: 'from-emerald-600 to-emerald-700', Icon: ShieldCheck, text: 'You can absorb most shocks without dipping below zero.' },
-  moderate: { label: 'Moderate', tone: 'from-navy-900 to-navy-800', Icon: ShieldAlert, text: 'Everyday swings are fine, but a big shock would hurt.' },
-  fragile: { label: 'Fragile', tone: 'from-red-700 to-red-800', Icon: AlertOctagon, text: 'A single shock could push you into the red.' },
+  strong: { label: 'Strong', panel: 'border-emerald-200 bg-emerald-50', icon: 'text-emerald-600', Icon: ShieldCheck, text: 'You can absorb most shocks without dipping below zero.' },
+  moderate: { label: 'Moderate', panel: 'border-amber-200 bg-amber-50', icon: 'text-amber-600', Icon: ShieldAlert, text: 'Everyday swings are fine, but a big shock would hurt.' },
+  fragile: { label: 'Fragile', panel: 'border-red-200 bg-red-50', icon: 'text-red-600', Icon: AlertOctagon, text: 'A single shock could push you into the red.' },
 } as const
 
 export default function StressTest() {
@@ -35,23 +35,28 @@ export default function StressTest() {
         description="Your twin is hit with common shocks and thousands of spending variations, using the same engine as the simulator. Everything here is an estimate."
         actions={<ProvenanceTag />} />
 
-      <div className={`rounded-2xl bg-gradient-to-br ${r.tone} p-6 text-white shadow-lg`}>
+      <div className={`rounded-2xl border p-5 sm:p-6 ${r.panel}`}>
         <div className="flex flex-wrap items-start gap-4">
-          <div className="rounded-2xl bg-white/10 p-3"><r.Icon className="h-7 w-7" /></div>
+          <r.Icon className={`mt-1 h-8 w-8 shrink-0 ${r.icon}`} />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/70">Resilience</p>
-            <h2 className="text-2xl font-semibold tracking-tight">{r.label}</h2>
-            <p className="mt-1 text-sm text-white/80">{r.text}</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-navy-500">Resilience rating</p>
+            <h2 className="text-3xl font-semibold tracking-tight text-navy-900">{r.label}</h2>
+            <p className="mt-1 text-sm text-navy-600">{r.text}</p>
           </div>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-right text-[13px]">
+            <dt className="text-navy-500">Scenarios survived</dt><dd className="tabular font-semibold text-navy-900">{data.shocks_survived} of {data.shocks.length}</dd>
+            <dt className="text-navy-500">Buffer-breach probability</dt><dd className="tabular font-semibold text-navy-900">{pct(data.chance_below_buffer, 0)}</dd>
+          </dl>
         </div>
-        <ul className="mt-4 space-y-1 text-[13px] text-white/85">{data.summary.map((l, i) => <li key={i}>• {l}</li>)}</ul>
+        <ul className="mt-4 space-y-1 border-t border-black/5 pt-3 text-[13px] text-navy-700">{data.summary.map((l, i) => <li key={i}>• {l}</li>)}</ul>
+        <p className="mt-2 text-[11.5px] text-navy-500">A qualitative rating from explicit thresholds on runway, shocks and spending variability, not a score.</p>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Tile icon={<Timer className="h-4 w-4" />} label="Emergency runway" value={`${data.runway_months} mo`} sub={`with no income · ${inr(data.monthly_burn)}/mo`} alert={Number(data.runway_months) < 3} />
-        <Tile icon={<TrendingDown className="h-4 w-4" />} label="Chance below buffer" value={pct(data.chance_below_buffer, 0)} sub={`next ${data.assumptions.horizon_days} days · ${data.paths} paths`} alert={Number(data.chance_below_buffer) > 0.1} />
+        <Tile icon={<Timer className="h-4 w-4" />} label="Emergency runway" value={`${data.runway_months} months`} sub={`with no income · ${inr(data.monthly_burn)}/month`} alert={Number(data.runway_months) < 3} />
+        <Tile icon={<TrendingDown className="h-4 w-4" />} label="Buffer-breach probability" value={pct(data.chance_below_buffer, 0)} sub={`share of ${data.paths} simulated paths, next ${data.assumptions.horizon_days} days`} alert={Number(data.chance_below_buffer) > 0.1} />
         <Tile icon={<AlertOctagon className="h-4 w-4" />} label="Chance of going negative" value={pct(data.chance_below_zero, 0)} sub="from spending swings alone" alert={Number(data.chance_below_zero) > 0} />
-        <Tile icon={<LifeBuoy className="h-4 w-4" />} label="Shocks survived" value={`${data.shocks_survived} / ${data.shocks.length}`} sub="balance never below ₹0" alert={data.shocks_survived < data.shocks.length} />
+        <Tile icon={<LifeBuoy className="h-4 w-4" />} label="Scenarios survived" value={`${data.shocks_survived} of ${data.shocks.length}`} sub="balance never below ₹0" alert={data.shocks_survived < data.shocks.length} />
       </div>
 
       <Card className="mt-6">
@@ -61,7 +66,7 @@ export default function StressTest() {
       </Card>
 
       <Card className="mt-6" padded={false}>
-        <div className="p-5 pb-0 sm:p-6 sm:pb-0"><CardHeader title="Shock library" subtitle="Each shock on its own, everything else as today." /></div>
+        <div className="p-5 pb-0 sm:p-6 sm:pb-0"><CardHeader title="Shock scenario matrix" subtitle="Each shock applied on its own, everything else as today. Run any of them in Ask FINORA for the full breakdown." /></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-[13px]">
             <thead><tr className="border-b border-slate-100 text-left text-xs text-navy-400">
@@ -72,15 +77,15 @@ export default function StressTest() {
               {data.shocks.map((s) => (
                 <tr key={s.id}>
                   <td className="px-5 py-3 sm:px-6"><p className="font-medium text-navy-900">{s.name}</p><p className="text-[11px] text-navy-400">{s.description}</p></td>
-                  <td className={`tabular px-3 py-3 text-right font-semibold ${s.solvent ? 'text-navy-900' : 'text-red-700'}`}>{inr(s.min_balance)}<span className="block text-[11px] font-normal text-navy-400">{fmtShort(s.min_balance_date)}</span></td>
+                  <td className={`tabular px-3 py-3 text-right font-semibold ${s.solvent ? 'text-navy-900' : 'text-red-700'}`}>{inr(s.min_balance)}<span className="block text-[11px] font-normal text-navy-400">{fmtDate(s.min_balance_date)}</span></td>
                   <td className="tabular px-3 py-3 text-right text-navy-700">{s.days_below_buffer ? `${s.days_below_buffer} day(s)` : '—'}</td>
                   <td className="px-3 py-3 text-right">
-                    {!s.solvent ? <Badge tone="red">Negative from {fmtShort(s.first_below_zero!)}</Badge>
+                    {!s.solvent ? <Badge tone="red">Critical · negative from {fmtDate(s.first_below_zero!)}</Badge>
                       : !s.above_buffer ? <Badge tone="amber">Below buffer</Badge> : <Badge tone="green" icon={<CheckCircle2 className="h-3 w-3" />}>Absorbed</Badge>}
                   </td>
                   <td className="px-5 py-3 text-right sm:px-6">
                     <Link to={`/assistant?q=${encodeURIComponent(askAbout(s))}`} title={s.changes.map(describeChange).join(' + ')}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-navy-800 hover:underline">Explore <ArrowRight className="h-3 w-3" /></Link>
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-navy-800 hover:bg-slate-50">Run simulation <ArrowRight className="h-3 w-3" /></Link>
                   </td>
                 </tr>
               ))}
@@ -99,33 +104,33 @@ function Bands({ data }: { data: StressReport }) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-navy-500">
-        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: 'var(--series-1)', opacity: 0.18 }} aria-hidden />Likely range (10th–90th percentile)</span>
-        <ChartLegendItem swatch="var(--series-1)" label="Median path" />
-        <ChartLegendItem swatch="var(--axis)" label="Forecast" dashed thin />
-        <ChartLegendItem swatch="var(--status-critical)" label={`Buffer ${inrCompact(buffer)}`} dashed thin />
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: '#6366f1', opacity: 0.18 }} aria-hidden />80% confidence band (10th–90th percentile)</span>
+        <ChartLegendItem swatch="#4338ca" label="Median path" />
+        <ChartLegendItem swatch="#94a3b8" label="Deterministic forecast" dashed thin />
+        <ChartLegendItem swatch="var(--status-warning)" label={`Safety buffer ${inr(buffer)}`} dashed thin />
       </div>
       <div style={{ height: 300 }} role="img" aria-label={`Balance range over ${data.assumptions.horizon_days} days. In 90 days, 80% of paths end between ${inr(data.bands.at(-1)!.p10)} and ${inr(data.bands.at(-1)!.p90)}.`}>
         <ResponsiveContainer>
           <ComposedChart data={rows} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--grid)" />
             <XAxis dataKey="on" tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} minTickGap={40} />
-            <YAxis tickFormatter={inrCompact} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={56} />
+            <YAxis tickFormatter={inrAxis} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={84} />
             <Tooltip cursor={{ stroke: 'var(--axis)', strokeDasharray: '3 3' }} content={({ active, payload }) => {
               if (!active || !payload?.length) return null
               const b = payload[0].payload as (typeof rows)[number]
               return (
                 <TooltipShell title={tooltipDate(b.on)}>
                   <TooltipRow label="Optimistic (90th)" value={inr(b.p90)} />
-                  <TooltipRow swatch="var(--series-1)" label="Median" value={inr(b.p50)} />
+                  <TooltipRow swatch="#4338ca" label="Median" value={inr(b.p50)} />
                   <TooltipRow label="Pessimistic (10th)" value={inr(b.p10)} />
-                  <TooltipRow swatch="var(--axis)" dashed label="Forecast" value={inr(b.baseline)} />
+                  <TooltipRow swatch="#94a3b8" dashed label="Forecast" value={inr(b.baseline)} />
                 </TooltipShell>
               )
             }} />
-            <ReferenceLine y={buffer} stroke="var(--status-critical)" strokeOpacity={0.55} strokeDasharray="4 4" />
-            <Area type="monotone" dataKey="range" stroke="none" fill="var(--series-1)" fillOpacity={0.16} isAnimationActive={false} />
-            <Line type="monotone" dataKey="baseline" stroke="var(--axis)" strokeWidth={1.5} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="p50" stroke="var(--series-1)" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <ReferenceLine y={buffer} stroke="var(--status-warning)" strokeWidth={1.5} strokeDasharray="2 4" />
+            <Area type="monotone" dataKey="range" stroke="#a5b4fc" strokeWidth={0.75} fill="#6366f1" fillOpacity={0.14} isAnimationActive={false} />
+            <Line type="monotone" dataKey="baseline" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="p50" stroke="#4338ca" strokeWidth={2.5} dot={false} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

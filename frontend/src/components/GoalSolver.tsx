@@ -1,7 +1,7 @@
 import { CalendarCheck, Target, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Area, CartesianGrid, ComposedChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { fmtDate, fmtShort, inr, inrCompact } from '../lib/format'
+import { fmtDate, fmtShort, inr, inrCompact, inrAxis } from '../lib/format'
 import type { Affordability, AffordabilityPoint } from '../lib/types'
 import { TooltipRow, TooltipShell, tooltipDate } from './charts/ChartTooltip'
 import { ProjectedTag } from './ui/Badge'
@@ -32,7 +32,10 @@ export function GoalSolver({ data, amount, compact = false }: { data: Affordabil
       </div>
 
       {!compact && <Curve data={data} amount={amount} />}
-      <ul className="mt-4 space-y-1.5 text-[13px] text-navy-600">{data.explanation.map((l, i) => <li key={i}>• {l}</li>)}</ul>
+      <details className="mt-4 rounded-xl bg-slate-50 p-3 text-[13px] text-navy-600">
+        <summary className="cursor-pointer font-medium text-navy-800">Explanation</summary>
+        <ul className="mt-2 space-y-1.5">{data.explanation.map((l, i) => <li key={i}>• {l}</li>)}</ul>
+      </details>
     </Card>
   )
 }
@@ -63,7 +66,7 @@ function Curve({ data, amount }: { data: Affordability; amount?: number }) {
             </defs>
             <CartesianGrid vertical={false} stroke="var(--grid)" />
             <XAxis dataKey="on" tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} minTickGap={40} />
-            <YAxis tickFormatter={inrCompact} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={56} />
+            <YAxis tickFormatter={inrAxis} tick={{ fontSize: 11, fill: 'var(--axis)' }} tickLine={false} axisLine={false} width={84} />
             <Tooltip content={<RoomTooltip />} cursor={{ stroke: 'var(--axis)', strokeDasharray: '3 3' }} />
             {amount ? <ReferenceLine y={amount} stroke="#0b1b3a" strokeOpacity={0.5} strokeDasharray="4 4"
               label={{ value: `Your purchase ${inrCompact(amount)}`, position: 'insideTopRight', fontSize: 11, fill: '#52607d' }} /> : null}

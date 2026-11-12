@@ -3,7 +3,10 @@ const inrFmt2 = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'I
 
 export const inr = (v: number, decimals = false) => (decimals ? inrFmt2 : inrFmt).format(v)
 
-/** Compact Indian notation for axes: ₹1.2L, ₹45K, ₹1.1Cr. */
+/** Full Indian grouping for chart axes and key figures: ₹2,00,000 (never ₹2L on an axis). */
+export const inrAxis = (v: number) => inrFmt.format(Math.round(v))
+
+/** Compact Indian notation (₹1.2L, ₹45K): only for small chips where space is tight, never chart axes. */
 export function inrCompact(v: number): string {
   const a = Math.abs(v)
   const sign = v < 0 ? '-' : ''

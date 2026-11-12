@@ -490,7 +490,8 @@ export interface EvalBlock {
 export interface AgentEval {
   mode: 'rules' | 'llm'; provider: string | null; model: string | null; commit: string | null; eval_today: string
   summary: { overall: EvalBlock; seen_wording: EvalBlock; paraphrases: EvalBlock; by_category: Record<string, EvalBlock> }
-  cases: { id: string; category: string; paraphrase: boolean; question: string; tool_ok: boolean; args_ok: boolean; why: string; grounded: boolean; called: string[] }[]
+  cases: { id: string; category: string; paraphrase: boolean; question: string; tool_ok: boolean; args_ok: boolean; why: string; grounded: boolean; called: string[]
+    mode?: 'llm' | 'rules'; guardrail?: 'passed' | 'replaced' | null; note?: string | null }[]
 }
 export interface RedteamSummary {
   faithful_n: number; faithful_acceptance_rate: number; false_rejection_rate: number; corrupted_n: number
@@ -517,4 +518,14 @@ export interface SettingsData {
   assumptions: Assumptions
   paypal: PayPalStatus
   ai_configured: boolean
+}
+
+/** Landing-page preview: engine output for the fictional sample profile (GET /api/demo-preview). */
+export interface DemoPreview {
+  sample: true; as_of: ISODate; transactions: number; current_balance: number; amount: number; label: string
+  safety_buffer: number; baseline_min_balance: number
+  recommendation: { option_id: string | null; headline: string }
+  options: { id: string; name: string; kind: 'pay_now' | 'wait' | 'pay_later'; safe: boolean; recommended: boolean
+    illustrative_terms: boolean; payments: { on: ISODate; amount: number }[]; min_balance: number; min_balance_date: ISODate
+    days_below_buffer: number; extra_cost: number }[]
 }

@@ -165,3 +165,15 @@ def test_fictional_and_real_data_never_share_a_ledger(client):
                        data={"replace": "true", "opening_balance": "100"}).json()["origin"] == "user_import"
     r = client.post("/api/data/sample", json={"file_id": "paypal_activity", "replace": False})
     assert r.status_code == 409 and "real data" in r.json()["detail"]
+
+
+def test_demo_preview_is_engine_output_and_touches_no_data(client):
+    before = client.get("/api/status").json()["transaction_count"]
+    p = client.get("/api/demo-preview").json()
+    assert p["sample"] and p["amount"] == 75000 and p["transactions"] > 200
+    assert client.get("/api/status").json()["transaction_count"] == before  # read-only: the twin is untouched
+    sim = client.post("/api/simulations/payment-options", json={"amount": 75000, "label": "Laptop"}).json()
+    # The fresh_sample fixture loaded the same profile, so the preview equals the engine's answer for it.
+    assert p["recommendation"]["option_id"] == sim["recommendation"]["option_id"] == "pay_in_4"
+    assert [o["min_balance"] for o in p["options"]] == [o["min_balance"] for o in sim["options"]]
+    assert next(o for o in p["options"] if o["id"] == "pay_now")["safe"] is False

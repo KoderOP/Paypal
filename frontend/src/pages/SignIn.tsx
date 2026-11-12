@@ -57,7 +57,7 @@ export default function SignIn() {
             <p className="mt-6 rounded-xl bg-white/10 p-3 text-sm">{ERRORS.not_configured}</p>
           )}
           {!auth.authenticated && (
-            <Link to="/" className="mt-3 block text-center text-sm font-medium text-sky-100 hover:text-white hover:underline">
+            <Link to="/overview" className="mt-3 block text-center text-sm font-medium text-sky-100 hover:text-white hover:underline">
               Continue without signing in →
             </Link>
           )}

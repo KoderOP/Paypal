@@ -78,7 +78,7 @@ class PayPalSource:
         if demo:
             message = ("PayPal demo mode: no PayPal credentials are set, so FINORA uses its built-in PayPal simulation. "
                        "Sync, checkout, Pay Later, subscriptions and sign-in all work with synthetic data and no real "
-                       "money. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to backend/.env to use your real PayPal.")
+                       "money. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to .env to use PayPal Sandbox.")
         elif self.configured:
             message = (f"PayPal {self.environment} credentials are set. Use “Test connection” to verify them with PayPal; "
                        "Transaction Search also needs that feature enabled on the REST app.")

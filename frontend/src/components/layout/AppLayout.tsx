@@ -22,7 +22,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     { to: '/crossborder', label: 'Cross-border income', icon: Globe2 },
   ] },
   { title: 'Understand', items: [
-    { to: '/', label: 'Overview', icon: LayoutDashboard },
+    { to: '/overview', label: 'Overview', icon: LayoutDashboard },
     { to: '/twin', label: 'My Financial Twin', icon: UserRound },
     { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   ] },
@@ -33,14 +33,14 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
 ]
 function Logo() {
   return (
-    <Link to="/welcome" className="flex items-center gap-2.5 px-2" aria-label="FINORA home">
+    <Link to="/" className="flex items-center gap-2.5 px-2" aria-label="FINORA home">
       <svg viewBox="0 0 32 32" className="h-8 w-8" aria-hidden>
         <rect width="32" height="32" rx="9" fill="#0b1b3a" />
         <path d="M8 21l5-6 4 3 7-9" fill="none" stroke="#34d399" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <div>
         <p className="text-[15px] font-bold tracking-[0.08em] text-navy-900">FINORA</p>
-        <p className="-mt-0.5 text-[10px] font-medium text-navy-400">Simulate before you pay</p>
+        <p className="-mt-0.5 text-[10px] font-medium text-navy-400">Know the impact first</p>
       </div>
     </Link>
   )
@@ -54,7 +54,7 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
           <p className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-navy-400">{g.title}</p>
           <div className="space-y-0.5">
             {g.items.map(({ to, label, icon: Icon, highlight, paypal }) => (
-              <NavLink key={to} to={to} end={to === '/'} onClick={onNavigate}
+              <NavLink key={to} to={to} onClick={onNavigate}
                 className={({ isActive }) =>
                   `group flex items-center gap-3 rounded-xl px-3 py-[7px] text-[13.5px] font-medium transition ${
                     isActive ? 'bg-navy-900 text-white shadow-sm' : 'text-navy-700 hover:bg-slate-100'}`}>
@@ -133,7 +133,7 @@ function DataCta({ onNavigate }: { onNavigate?: () => void }) {
 export function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
-  if (pathname === '/welcome') return <>{children}</>  // the landing page is full-bleed
+  if (pathname === '/' || pathname === '/welcome') return <>{children}</>  // the landing page is full-bleed
   return (
     <div className="min-h-screen">
       <aside className="fixed inset-y-0 left-0 hidden w-[272px] flex-col border-r border-slate-200/80 bg-white px-4 py-6 lg:flex">

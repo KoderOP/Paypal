@@ -13,7 +13,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, Skeleton } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { ApiError, api } from '../lib/api'
-import { addDays, fmtDate, fmtShort, inr, inrCompact, signedInr } from '../lib/format'
+import { addDays, fmtDate, inr, signedInr } from '../lib/format'
 import type { Affordability, PaymentComparison, PurchaseSimulation, Risk, TimingOption } from '../lib/types'
 
 const PRESETS = [
@@ -91,6 +91,7 @@ export default function Simulator({ header }: { header?: ReactNode } = {}) {
 
   const asOf = sim?.as_of
   const maxDate = asOf ? addDays(asOf, sim!.assumptions.horizon_days) : undefined
+  const dateInvalid = !!(date && asOf && maxDate && (date < asOf || date > maxDate))
 
   return (
     <>
@@ -104,7 +105,7 @@ export default function Simulator({ header }: { header?: ReactNode } = {}) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
           <Card>
-            <CardHeader title="Scenario" subtitle="One-time purchase" icon={<Sparkles className="h-4 w-4 text-brand-600" />} />
+            <CardHeader title="Scenario" subtitle="Item, amount, date and the balance you always want to keep" icon={<Sparkles className="h-4 w-4 text-brand-600" />} />
             <div className="grid grid-cols-2 gap-2">
               {PRESETS.map((p) => {
                 const active = amount === p.amount && label.toLowerCase().startsWith(p.label.toLowerCase())
@@ -117,14 +118,14 @@ export default function Simulator({ header }: { header?: ReactNode } = {}) {
                     <p.icon className={`h-4 w-4 ${active ? 'text-brand-500' : 'text-navy-400'}`} />
                     <span>
                       <span className="block text-xs font-medium">{p.label}</span>
-                      <span className={`tabular block text-[11px] ${active ? 'text-slate-300' : 'text-navy-400'}`}>{inrCompact(p.amount)}</span>
+                      <span className={`tabular block text-[11px] ${active ? 'text-slate-300' : 'text-navy-400'}`}>{inr(p.amount)}</span>
                     </span>
                   </button>
                 )
               })}
             </div>
 
-            <label className="mt-5 block text-xs font-medium text-navy-700" htmlFor="sim-label">What are you buying?</label>
+            <label className="mt-5 block text-xs font-medium text-navy-700" htmlFor="sim-label">Item</label>
             <input id="sim-label" value={label} maxLength={80} onChange={(e) => setLabel(e.target.value)}
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-900/10" />
 
@@ -138,25 +139,26 @@ export default function Simulator({ header }: { header?: ReactNode } = {}) {
             {!amountValid && <p className="mt-1 text-xs text-red-600">Enter an amount between ₹1 and ₹10,00,00,000.</p>}
             {amountValid && <p className="mt-1 text-xs text-navy-400">{inr(amount)}</p>}
 
-            <p className="mt-5 text-xs font-medium text-navy-700">When?</p>
+            <p className="mt-5 text-xs font-medium text-navy-700">Purchase date</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               <DateChip active={date === null} onClick={() => setDate(null)}>Today</DateChip>
               {sim?.timing_options.filter((o) => o.days_from_now > 0 && o.label.startsWith('After income')).slice(0, 2).map((o) => (
                 <DateChip key={o.purchase_date} active={date === o.purchase_date} onClick={() => setDate(o.purchase_date)}>
-                  Payday {fmtShort(o.purchase_date)}
+                  Payday {fmtDate(o.purchase_date)}
                 </DateChip>
               ))}
             </div>
-            <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5">
+            <div className={`mt-2 flex items-center gap-2 rounded-xl border px-3 py-1.5 ${dateInvalid ? 'border-red-300' : 'border-slate-200'}`}>
               <CalendarDays className="h-4 w-4 text-navy-400" />
               <input type="date" aria-label="Custom purchase date" min={asOf} max={maxDate} value={date ?? asOf ?? ''}
                 onChange={(e) => setDate(e.target.value && e.target.value !== asOf ? e.target.value : null)}
                 className="w-full bg-transparent text-sm text-navy-800 outline-none" />
             </div>
+            {dateInvalid && <p className="mt-1 text-xs text-red-600">Pick a date between {fmtDate(asOf!)} and {fmtDate(maxDate!)} (the forecast window).</p>}
 
             <div className="mt-5">
               <div className="flex items-center justify-between">
-                <label htmlFor="sim-buffer" className="text-xs font-medium text-navy-700">Safety buffer</label>
+                <label htmlFor="sim-buffer" className="text-xs font-medium text-navy-700">Minimum buffer</label>
                 <span className="tabular text-xs font-semibold text-navy-900">{buffer !== null ? inr(buffer) : '—'}</span>
               </div>
               <input id="sim-buffer" type="range" min={0} max={100000} step={5000} value={buffer ?? 20000}
@@ -174,7 +176,7 @@ export default function Simulator({ header }: { header?: ReactNode } = {}) {
           {sim && (
             <Results sim={sim} onPickDate={(d) => setDate(d === sim.as_of ? null : d)}
               planning={<>
-                {cmp ? <PaymentOptions cmp={cmp} onChanged={() => setNonce((n) => n + 1)} /> : <Skeleton className="h-96" />}
+                {cmp ? <PaymentOptions cmp={cmp} variant="matrix" onChanged={() => setNonce((n) => n + 1)} /> : <Skeleton className="h-96" />}
                 {aff && <GoalSolver data={aff} amount={amount} />}
               </>} />
           )}
@@ -204,9 +206,9 @@ function ResultSkeleton() {
 }
 
 const VERDICT = {
-  safe_now: { tone: 'from-emerald-600 to-emerald-700', Icon: CheckCircle2, tag: 'Affordable', ring: 'ring-emerald-500/30' },
-  wait: { tone: 'from-navy-900 to-navy-800', Icon: Hourglass, tag: 'Better to wait', ring: 'ring-amber-400/30' },
-  not_recommended: { tone: 'from-red-700 to-red-800', Icon: XCircle, tag: 'Not recommended', ring: 'ring-red-500/30' },
+  safe_now: { panel: 'border-emerald-200 bg-emerald-50', icon: 'text-emerald-600', Icon: CheckCircle2, tag: 'Affordable now' },
+  wait: { panel: 'border-amber-200 bg-amber-50', icon: 'text-amber-600', Icon: Hourglass, tag: 'Better to wait' },
+  not_recommended: { panel: 'border-red-200 bg-red-50', icon: 'text-red-600', Icon: XCircle, tag: 'Not recommended' },
 } as const
 
 function Results({ sim, onPickDate, planning }: { sim: PurchaseSimulation; onPickDate: (d: string) => void; planning?: ReactNode }) {
@@ -217,24 +219,26 @@ function Results({ sim, onPickDate, planning }: { sim: PurchaseSimulation; onPic
 
   return (
     <>
-      {/* Verdict */}
-      <div className={`animate-fade-up relative overflow-hidden rounded-2xl bg-gradient-to-br ${v.tone} p-6 text-white shadow-lg sm:p-7`}>
-        <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/5" aria-hidden />
-        <div className="absolute -bottom-20 right-24 h-40 w-40 rounded-full bg-white/5" aria-hidden />
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className={`rounded-2xl bg-white/10 p-3 ring-4 ${v.ring}`}><v.Icon className="h-7 w-7" /></div>
+      {/* Recommendation: restrained panel, severity-coded. The window and wording come from the engine. */}
+      <div className={`animate-fade-up rounded-2xl border p-5 sm:p-6 ${v.panel}`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <v.Icon className={`mt-1 h-6 w-6 shrink-0 ${v.icon}`} />
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/70">{v.tag} · {sim.scenario.label}</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">{rec.headline}</h2>
-              <p className="mt-1.5 max-w-xl text-sm text-white/80">
-                {inr(sim.scenario.amount)} on {fmtDate(sim.scenario.purchase_date)} · lowest projected balance {inr(selected.min_balance)} vs. {inr(sim.assumptions.safety_buffer)} buffer
+              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-navy-500">Timing · paying in full · {v.tag}</p>
+              {recommended?.safe && !recommended.is_selected
+                ? <h2 className="mt-1 text-xl font-semibold tracking-tight text-navy-900">Optimal purchase window: {fmtDate(recommended.purchase_date)}</h2>
+                : <h2 className="mt-1 text-xl font-semibold tracking-tight text-navy-900">{rec.headline}</h2>}
+              <p className="mt-1 max-w-xl text-[13.5px] text-navy-600">
+                {recommended?.safe && !recommended.is_selected
+                  ? `Preserves your minimum buffer of ${inr(sim.assumptions.safety_buffer)}: lowest projected balance ${inr(recommended.min_balance)}. ${rec.headline}`
+                  : `${inr(sim.scenario.amount)} on ${fmtDate(sim.scenario.purchase_date)} · lowest projected balance ${inr(selected.min_balance)} vs ${inr(sim.assumptions.safety_buffer)} buffer.`}
               </p>
             </div>
           </div>
           {recommended && !recommended.is_selected && (
-            <button onClick={() => onPickDate(recommended.purchase_date)} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm transition hover:bg-brand-50">
-              Simulate buying on {fmtShort(recommended.purchase_date)}
+            <button onClick={() => onPickDate(recommended.purchase_date)} className="h-9 rounded-lg bg-navy-900 px-4 text-sm font-semibold text-white transition hover:bg-navy-800">
+              Simulate buying on {fmtDate(recommended.purchase_date)}
             </button>
           )}
         </div>
@@ -242,11 +246,11 @@ function Results({ sim, onPickDate, planning }: { sim: PurchaseSimulation; onPic
 
       {/* Key metrics */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Metric label="Balance after purchase" value={inr(selected.balance_after_purchase)} sub={`on ${fmtShort(sim.scenario.purchase_date)}`} />
-        <Metric label="Lowest projected balance" value={inr(sim.simulated.min_balance)} sub={fmtShort(sim.simulated.min_balance_date)}
+        <Metric label="Balance after purchase" value={inr(selected.balance_after_purchase)} sub={`on ${fmtDate(sim.scenario.purchase_date)}`} />
+        <Metric label="Lowest projected balance" value={inr(sim.simulated.min_balance)} sub={fmtDate(sim.simulated.min_balance_date)}
           alert={sim.simulated.min_balance < sim.assumptions.safety_buffer} />
-        <Metric label="Emergency runway" value={`${sim.runway_months_after} mo`} sub={`from ${sim.runway_months_before} months today`} />
-        <Metric label="Recovery time" value={sim.months_to_recover ? `${sim.months_to_recover} mo` : '—'} sub={`at ${inr(sim.monthly_surplus)}/mo surplus`} />
+        <Metric label="Liquidity runway" value={`${sim.runway_months_after} months`} sub={`${sim.runway_months_before} months before the purchase`} />
+        <Metric label="Surplus recovery time" value={sim.months_to_recover ? `${sim.months_to_recover} months` : '—'} sub={`to rebuild at ${inr(sim.monthly_surplus)}/month surplus`} />
       </div>
 
       {planning}
@@ -262,11 +266,11 @@ function Results({ sim, onPickDate, planning }: { sim: PurchaseSimulation; onPic
           <Card key={i.day} className="!p-5">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-navy-900">After {i.day} days</p>
-              <p className="text-xs text-navy-400">{fmtShort(i.on)}</p>
+              <p className="text-xs text-navy-400">{fmtDate(i.on)}</p>
             </div>
             <div className="mt-3 space-y-1.5 text-[13px]">
-              <Row swatch="var(--series-1)" label="Without" value={inr(i.baseline)} />
-              <Row swatch="var(--series-2)" label="With purchase" value={inr(i.scenario)} />
+              <Row swatch="#94a3b8" label="Without" value={inr(i.baseline)} />
+              <Row swatch="#4338ca" label="With purchase" value={inr(i.scenario)} />
             </div>
             <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
               <span className="text-xs text-navy-500">Change</span>
@@ -278,23 +282,21 @@ function Results({ sim, onPickDate, planning }: { sim: PurchaseSimulation; onPic
 
       <TimingComparison sim={sim} onPick={onPickDate} />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader title="Why this recommendation" subtitle="Generated from computed figures — no estimates by AI" />
-          <ol className="space-y-3">
-            {rec.explanation.map((line, i) => (
-              <li key={i} className="flex gap-3 text-sm leading-relaxed text-navy-700">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-semibold text-navy-700">{i + 1}</span>
-                {line}
-              </li>
-            ))}
-          </ol>
-        </Card>
-        <Card>
-          <CardHeader title="Risk assessment" subtitle="For the date you selected" />
-          <ul className="space-y-2.5">{sim.risks.map((r, i) => <RiskRow key={i} risk={r} />)}</ul>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader title="Cash-Flow Risk Analysis" subtitle={`For a purchase on ${fmtDate(sim.scenario.purchase_date)}, over the next ${sim.assumptions.horizon_days} days`} />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-[13px]">
+            <thead><tr className="border-b border-slate-200 text-left text-[11.5px] font-semibold uppercase tracking-wide text-navy-500">
+              <th className="w-28 py-2 pr-3">Severity</th><th className="py-2 pr-3">Risk</th><th className="py-2">Detail (from the forecast)</th>
+            </tr></thead>
+            <tbody className="divide-y divide-slate-100">{sim.risks.map((r, i) => <RiskRow key={i} risk={r} />)}</tbody>
+          </table>
+        </div>
+        <details className="mt-4 rounded-xl bg-slate-50 p-3 text-[13px] text-navy-600">
+          <summary className="cursor-pointer font-medium text-navy-800">How the recommendation was reached</summary>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-5">{rec.explanation.map((line, i) => <li key={i}>{line}</li>)}</ol>
+        </details>
+      </Card>
 
       <Card className="!bg-slate-50/60">
         <div className="flex flex-wrap items-start gap-x-8 gap-y-3 text-xs text-navy-500">
@@ -370,7 +372,7 @@ function TimingCard({ o, buffer, scale, onPick }: { o: TimingOption; buffer: num
         <div className="absolute -top-1 h-4 w-px bg-navy-900" style={{ left: `${scale(buffer)}%` }} title="Safety buffer" />
       </div>
       <p className="mt-2 text-[11px] text-navy-400">
-        {o.days_below_buffer > 0 ? `${o.days_below_buffer} day(s) under buffer` : 'Never under buffer'} · low on {fmtShort(o.min_balance_date)}
+        {o.days_below_buffer > 0 ? `${o.days_below_buffer} day(s) under buffer` : 'Never under buffer'} · low on {fmtDate(o.min_balance_date)}
       </p>
       {o.is_selected && <span className="absolute -top-2 left-3 rounded bg-navy-900 px-1.5 text-[10px] font-semibold text-white">Selected</span>}
     </button>
@@ -388,13 +390,15 @@ const RISK = {
 function RiskRow({ risk }: { risk: Risk }) {
   const { Icon, color, label } = RISK[risk.level]
   return (
-    <li className="flex gap-3 rounded-xl border border-slate-100 p-3">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color }} aria-hidden />
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-navy-900">{risk.title} <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-navy-400">{label}</span></p>
-        <p className="mt-0.5 text-[13px] text-navy-500">{risk.detail}</p>
-      </div>
-    </li>
+    <tr className="align-top">
+      <td className="py-2.5 pr-3">
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset" style={{ color }}>
+          <Icon className="h-3.5 w-3.5" aria-hidden />{label}
+        </span>
+      </td>
+      <td className="py-2.5 pr-3 font-medium text-navy-900">{risk.title}</td>
+      <td className="py-2.5 text-navy-600">{risk.detail}</td>
+    </tr>
   )
 }
 

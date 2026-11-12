@@ -17,8 +17,8 @@ const FLOW = [
   { icon: KeyRound, title: 'Connect', text: 'OAuth 2.0 client credentials. Secrets stay on the server; the browser never sees them.' },
   { icon: RefreshCw, title: 'Sync', text: 'Read-only Transaction Search API, fetched in 31-day windows — or an uploaded Activity report.' },
   { icon: Brain, title: 'Learn', text: 'Transactions are normalised and the twin detects income, recurring payments and habits.' },
-  { icon: FlaskConical, title: 'Simulate', text: 'A deterministic engine projects 90 days and compares paying now, waiting or PayPal Pay Later.' },
-  { icon: ShieldCheck, title: 'Act', text: 'Pay with PayPal (Orders API) or cancel a subscription (Subscriptions API), each only after you confirm.' },
+  { icon: FlaskConical, title: 'Simulate', text: 'A deterministic engine projects 90 days and compares paying now, waiting, or illustrative Pay in 4 / Pay Monthly terms.' },
+  { icon: ShieldCheck, title: 'Act', text: 'Check out with PayPal (Orders v2): you acknowledge, approve on PayPal, then confirm the capture. Subscription actions also need confirmation.' },
 ]
 
 export default function PayPal() {
@@ -50,20 +50,18 @@ export default function PayPal() {
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#001c64] via-[#003087] to-[#0b4fb3] p-6 text-white shadow-xl shadow-[#003087]/20 sm:p-8">
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/5" aria-hidden />
-        <div className="absolute -bottom-28 right-40 h-56 w-56 rounded-full bg-sky-300/10" aria-hidden />
-        <div className="relative flex flex-wrap items-start justify-between gap-6">
+      <div className="rounded-2xl bg-[#0b1b3a] p-6 text-white sm:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="max-w-2xl">
             <div className="flex items-center gap-3">
               <span className="rounded-2xl bg-white/10 p-1"><PayPalMark size="lg" /></span>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-200">PayPal × FINORA</p>
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Your PayPal activity, turned into foresight</h1>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-sky-300">PayPal integration</p>
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">Connection status and records</h1>
               </div>
             </div>
             <p className="mt-4 text-[15px] leading-relaxed text-sky-100/90">
-              FINORA builds a financial digital twin from your PayPal transactions — then simulates purchases, salary delays and shocks so you know the impact before money moves.
+              FINORA reads PayPal records through Transaction Search and runs checkout through the Orders v2 API, with your approval on PayPal and an explicit capture confirmation. Pay in 4 and Pay Monthly figures elsewhere in FINORA are illustrative calculations, not a PayPal financing integration.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <span className={`rounded-full px-3 py-1 text-xs font-medium ${d.demo ? 'bg-amber-300 text-amber-950' : 'bg-white/10'}`}>
@@ -108,7 +106,7 @@ export default function PayPal() {
             <Card className="sm:col-span-3">
               <CardHeader title="Where these records feed in" subtitle="PayPal records join the same ledger as your other data, each labelled with its source" />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <Jump to="/" title="Overview" text="Balance, cash flow & 90-day projection" />
+                <Jump to="/overview" title="Overview" text="Balance, cash flow & 90-day projection" />
                 <Jump to="/twin" title="My Financial Twin" text="Income cycles, recurring payments, habits" />
                 <Jump to="/simulator" title="What-if Simulator" text="Simulate a ₹75,000 laptop purchase" />
               </div>
@@ -177,7 +175,7 @@ export default function PayPal() {
             </ul>
           )}
           {(!d.configured || d.demo) && (
-            <pre className="mt-3 overflow-x-auto rounded-lg bg-navy-900 p-3 text-[11px] text-slate-200">{`# backend/.env
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-navy-900 p-3 text-[11px] text-slate-200">{`# .env (repo root) or backend/.env
 PAYPAL_CLIENT_ID=...
 PAYPAL_CLIENT_SECRET=...
 PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com`}</pre>
@@ -224,24 +222,30 @@ function IntegrationStatus({ d, orders }: { d: PayPalOverview; orders: CheckoutO
   const ls = d.last_sync
   const apiRecords = d.records_by_origin.filter((r) => r.origin === 'paypal_api')
   const captured = orders.filter((o) => o.status === 'captured')
-  type Row = { label: string; state: 'ok' | 'warn' | 'off' | 'info'; detail: React.ReactNode; action?: React.ReactNode }
+  type Row = { label: string; state: 'ok' | 'warn' | 'off' | 'info'; status: string; detail: React.ReactNode; action?: React.ReactNode }
   const rows: Row[] = [
     { label: `${d.demo ? 'Demo' : env === 'sandbox' ? 'Sandbox' : 'PayPal'} API authentication`,
       state: !d.configured ? 'off' : auth ? (auth.ok ? 'ok' : 'warn') : 'info',
+      status: !d.configured ? 'Not configured' : auth ? (auth.ok ? (d.demo ? 'Simulated token' : 'Verified now') : 'Failed') : (d.demo ? 'Demo mode' : 'Not tested yet'),
       detail: !d.configured ? 'No credentials set.' : auth ? auth.message
         : d.demo ? 'No PayPal credentials: this is FINORA’s simulated PayPal. Nothing is sent to PayPal.' : 'Credentials are set. Not tested in this session.',
       action: d.configured ? <button onClick={() => void check()} disabled={checking} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[12px] font-semibold text-[#003087] hover:bg-slate-50 disabled:opacity-50">{checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />} Test connection</button> : undefined },
     { label: 'Read-only Transaction Search',
       state: !ls ? 'off' : ls.outcome === 'ok' ? 'ok' : 'warn',
-      detail: !ls ? 'Not run yet.' : ls.outcome === 'ok' ? `Last run returned ${ls.records} record(s) (${ls.environment}).` : `Last run (${ls.environment}): ${ls.message ?? ls.outcome}` },
+      status: !ls ? 'Not run' : ls.outcome === 'ok' ? 'Last sync OK' : ls.outcome === 'empty' ? 'No records' : 'Last sync failed',
+      detail: !ls ? 'Not run yet in this database.' : `${new Date(ls.at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${ls.environment} · `
+        + (ls.outcome === 'ok' ? `${ls.records} record(s) returned` : (ls.message ?? ls.outcome)) },
     { label: `${d.demo ? 'Simulated' : 'Actual'} PayPal records in your twin`,
       state: apiRecords.length ? 'ok' : 'off',
+      status: apiRecords.length ? `${apiRecords.reduce((t, r) => t + r.count, 0)} record(s)` : 'None',
       detail: apiRecords.length ? apiRecords.map((r) => `${r.count} from ${r.label}`).join(' · ') : 'None. No transaction in your twin was retrieved from PayPal.' },
     { label: 'Sample transactions (fictional)',
       state: d.sample_transactions ? 'info' : 'off',
+      status: d.sample_transactions ? 'Fictional' : 'None',
       detail: d.sample_transactions ? `${d.sample_transactions} synthetic transactions in PayPal Activity format, created by FINORA. Not retrieved from PayPal.` : 'None loaded.' },
     { label: 'Orders API checkout & capture',
       state: captured.length ? 'ok' : orders.length ? 'info' : 'off',
+      status: captured.length ? `${captured.length} captured` : orders.length ? 'Not captured yet' : 'None yet',
       detail: orders.length ? Object.entries(d.checkouts_by_status).map(([k, n]) => `${n} ${STATE_LABEL[k]?.toLowerCase() ?? k}`).join(' · ') : 'No checkouts yet. Payments start from a drafted proposal in Ask FINORA.' },
   ]
   const icon = (st: Row['state']) => st === 'ok' ? <CheckCircle2 className="h-4 w-4 text-brand-600" /> : st === 'warn' ? <XCircle className="h-4 w-4 text-red-600" /> : st === 'info' ? <CircleDashed className="h-4 w-4 text-amber-600" /> : <CircleDashed className="h-4 w-4 text-slate-300" />
@@ -254,6 +258,7 @@ function IntegrationStatus({ d, orders }: { d: PayPalOverview; orders: CheckoutO
           <li key={r.label} className="flex flex-wrap items-start gap-3 py-3 first:pt-0">
             <span className="mt-0.5">{icon(r.state)}</span>
             <div className="min-w-0 flex-1"><p className="text-sm font-medium text-navy-900">{r.label}</p><p className="text-[12.5px] text-navy-500">{r.detail}</p></div>
+            <Badge tone={r.state === 'ok' ? 'green' : r.state === 'warn' ? 'red' : r.state === 'info' ? 'amber' : 'neutral'}>{r.status}</Badge>
             {r.action}
           </li>
         ))}
