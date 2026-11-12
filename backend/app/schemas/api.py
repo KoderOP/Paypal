@@ -29,6 +29,16 @@ class Kpis(BaseModel):
     next_income_date: date | None
 
 
+class ProvenanceOut(BaseModel):
+    origin: str
+    environment: str | None
+    label: str
+    count: int
+    first: date | None
+    last: date | None
+    synthetic: bool
+
+
 class DashboardResponse(BaseModel):
     as_of: date
     user_name: str
@@ -62,16 +72,6 @@ class TransactionOut(BaseModel):
     origin: str  # provenance: sample | user_import | paypal_api | paypal_checkout | unknown
     environment: str | None = None  # sandbox | live | demo for PayPal origins
     origin_label: str
-
-
-class ProvenanceOut(BaseModel):
-    origin: str
-    environment: str | None
-    label: str
-    count: int
-    first: date | None
-    last: date | None
-    synthetic: bool
 
 
 class TransactionPage(BaseModel):
