@@ -1,7 +1,7 @@
 # FINORA — Personal Financial Digital Twin
 
 **Don't just track your money. Simulate your financial future.**
-
+https://paypal-5y2r.onrender.com
 FINORA builds a working model of a person's finances from their transaction history (income cycles, recurring commitments and
 day-to-day spending) and uses it to project their balance day by day. Before a decision is made, it shows the effect of that
 decision on future cash flow: a large purchase, a delayed salary, a cancelled subscription or an unexpected bill.
