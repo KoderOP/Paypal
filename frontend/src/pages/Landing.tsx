@@ -7,8 +7,6 @@ import { ApiError, api } from '../lib/api'
 import { fmtDate, inr } from '../lib/format'
 import type { DemoPreview } from '../lib/types'
 
-const DEMO_QUESTION = 'Should I buy a ₹75,000 laptop?'
-
 function Mark({ light = false }: { light?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -184,7 +182,7 @@ export default function Landing() {
     try {
       await api.loadSample('paypal_activity', true) // generated server-side and stored as origin="sample"
       await refresh()
-      navigate(`/assistant?q=${encodeURIComponent(DEMO_QUESTION)}`)
+      navigate('/assistant') // open Ask FINORA empty: the user chooses what to ask
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not load the demo. Is the backend running on :8000?')
       setBusy(false)

@@ -190,8 +190,8 @@ const JOURNEY = ['Understand your cash flow', 'Ask about a purchase', 'Compare p
 /** The product in one line: type an amount, and the agent tests it against your future before you pay. */
 function DecisionStrip() {
   const navigate = useNavigate()
-  const [amount, setAmount] = useState('75000')
-  const [item, setItem] = useState('laptop')
+  const [amount, setAmount] = useState('')
+  const [item, setItem] = useState('')
   function go(e: React.FormEvent) {
     e.preventDefault()
     const n = Number(amount.replace(/[^\d.]/g, ''))
@@ -209,11 +209,11 @@ function DecisionStrip() {
           <label className="sr-only" htmlFor="ds-amount">Amount in rupees</label>
           <div className="flex items-center rounded-xl bg-white/10 px-3 ring-1 ring-white/15 focus-within:ring-emerald-300">
             <span className="text-slate-300">₹</span>
-            <input id="ds-amount" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-28 bg-transparent px-1.5 py-2 text-sm outline-none" />
+            <input id="ds-amount" inputMode="numeric" value={amount} placeholder="75,000" onChange={(e) => setAmount(e.target.value)} className="w-28 bg-transparent px-1.5 py-2 text-sm outline-none placeholder:text-slate-400" />
           </div>
           <label className="sr-only" htmlFor="ds-item">What is it?</label>
-          <input id="ds-item" value={item} maxLength={40} onChange={(e) => setItem(e.target.value)} placeholder="laptop" className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-sm outline-none ring-1 ring-white/15 focus:ring-emerald-300" />
-          <button type="submit" className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-navy-950 hover:bg-emerald-300">
+          <input id="ds-item" value={item} maxLength={40} onChange={(e) => setItem(e.target.value)} placeholder="e.g. laptop" className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-sm outline-none ring-1 ring-white/15 placeholder:text-slate-400 focus:ring-emerald-300" />
+          <button type="submit" disabled={!Number(amount.replace(/[^\d.]/g, ''))} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-400 disabled:opacity-50 px-4 py-2 text-sm font-semibold text-navy-950 hover:bg-emerald-300">
             Ask FINORA <ArrowRight className="h-4 w-4" />
           </button>
         </form>
