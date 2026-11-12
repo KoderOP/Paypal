@@ -7,8 +7,8 @@ day-to-day spending) and uses it to project their balance day by day. Before a d
 decision on future cash flow: a large purchase, a delayed salary, a cancelled subscription or an unexpected bill.
 
 Many personal-finance tools focus on what has already happened. FINORA addresses the moment before money moves. It answers
-questions such as *"Can I afford this, and when?"* or *"What happens if my income is two weeks late?"* with a projection, not
-an estimate.
+questions such as *"Can I afford this, and when?"* or *"What happens if my income is two weeks late?"* with a computed,
+day-by-day projection of the outcome.
 
 Two parts work together:
 
@@ -100,7 +100,8 @@ displayed, and a *Sample data* indicator remains visible while the profile is lo
 - **Pay Later modelling:** Pay in 4 and Pay Monthly options are modelled from illustrative terms to compare their cash-flow
   effect. PayPal determines actual Pay Later eligibility, APR and schedule on its own approval page.
 - **Subscriptions:** subscriptions are detected from history, added manually or linked through the PayPal Subscriptions
-  API: link and refresh, and cancel, suspend or activate (state-changing actions require explicit confirmation).
+  API, where they can be refreshed, cancelled, suspended or reactivated. Changes to a subscription require explicit
+  confirmation.
 - **Authentication:** optional Log in with PayPal (OpenID Connect). No feature requires sign-in.
 - **Integration status:** the PayPal Hub reports a live credential test, the last synchronisation result, record counts by
   source, and each checkout with its PayPal order and capture IDs.
@@ -126,13 +127,13 @@ date, so exact amounts vary slightly, while the outcome is consistent across dat
 | Pay in 4 (₹18,750 today, then 3 × ₹18,750) | ₹52,002 | Stays above, no additional cost |
 | Pay Monthly, 12 months | ₹1,01,305 | Stays above, ₹8,367 additional cost at 19.99% APR |
 
-Paying in full would leave the balance below the buffer until the next salary arrives, after rent, bills and day-to-day
-spending. Waiting until payday is safe but delays the purchase. Pay in 4 keeps the balance above the buffer at no additional
+Paying in full leaves the balance below the buffer for a week, because bills and day-to-day spending fall due before the
+next salary arrives. Waiting until payday is safe but delays the purchase. Pay in 4 keeps the balance above the buffer at no additional
 cost, so FINORA recommends it. The Pay in 4 and Pay Monthly figures use illustrative terms.
 
 If the user proceeds, FINORA prepares a checkout proposal. Nothing is created or charged until the user acknowledges the
-impact; PayPal then creates the order, the user approves it on PayPal, and the payment is captured only after explicit
-confirmation. The resulting payment or instalment schedule is then reflected in the forecast.
+impact. FINORA then creates the order through the PayPal Orders API, the user approves it on PayPal, and the payment is
+captured only after explicit confirmation. The resulting payment or instalment schedule is then reflected in the forecast.
 
 The same engine evaluates any decision in the same way: a different purchase, a salary delay, a new subscription or a
 combination of changes.
@@ -176,11 +177,10 @@ layer for data access, a pure financial engine, and the AI assistant. A PayPal i
 communication, and all external calls (Groq and PayPal) originate from the backend.
 
 ```
-React frontend ──/api──▶ FastAPI routers ──▶ services ──▶ financial engine
-                              │                 │
-                              ├──▶ AI assistant ┘ (tools call the engine)
-                              └──▶ PayPal integration ──▶ PayPal REST API
-                         SQLAlchemy ──▶ SQLite / PostgreSQL
+React frontend ──/api──▶ FastAPI routers ──┬──▶ services ──┬──▶ financial engine
+                                           │               └──▶ SQLAlchemy ──▶ SQLite / PostgreSQL
+                                           ├──▶ AI assistant ──▶ Groq API   (its tools call the engine)
+                                           └──▶ PayPal integration ──▶ PayPal REST API
 ```
 
 The detailed design, including diagrams of the data pipeline, forecasting, scenario simulation, AI assistant and payment
@@ -277,23 +277,26 @@ Tables are created at startup, and columns added in later versions are applied t
    per USD, for example `84`, which charges ₹75,000 as USD 892.86). The rate is user-configured, not retrieved from PayPal.
 3. Approve test payments with a US-registered Sandbox personal account. India-registered Sandbox buyer accounts were declined
    in testing.
-4. Verify the configuration: `cd backend && python -m evals.check_paypal` performs OAuth, creates a USD 1.00 order and, after
-   approval, captures it with `--capture <order id>`.
+4. Verify the configuration from `backend/` with the virtual environment active: `python -m evals.check_paypal` performs
+   OAuth, creates a USD 1.00 order and, after approval, captures it with `--capture <order id>`.
 
-To verify a Groq key and model: `cd backend && python -m evals.check_groq`. The Groq free tier allows 8,000 tokens per
+To verify a Groq key and model, run `python -m evals.check_groq` from `backend/`. The Groq free tier allows 8,000 tokens per
 minute, and a question uses roughly 4,000–4,800 tokens; when the limit is reached, the fallback model or the deterministic
 planner answers.
 
 ### Running tests
 
+From the repository root:
+
 ```bash
-cd backend && .venv/bin/python -m pytest -q    # backend test suite
-cd frontend && npx oxlint src && npm run build  # lint, type-check and production build
+(cd backend && .venv/bin/python -m pytest -q)          # backend test suite
+(cd frontend && npx oxlint src && npm run build)       # lint, type-check and production build
 ```
 
 ## Evaluation and Testing
 
-FINORA includes four reproducible evaluations (`cd backend && python -m evals.run_all`, adding `--llm` with a Groq key).
+FINORA includes four reproducible evaluations, run from `backend/` with `python -m evals.run_all` (add `--llm` to include the
+live Groq benchmark).
 **They use controlled data: synthetic histories and the fictional sample profile. They demonstrate the method and do not
 measure accuracy for real customers.** Results are also available in the application's Evaluation page.
 
@@ -338,6 +341,7 @@ frontend/
     components/       payment strategies, charts, provenance labels, layout, UI primitives
     lib/              API client, types, formatting helpers
 architecture.md       detailed architecture
+LICENSE               MIT License
 docs/                 evaluation report and demonstration script
 docker-compose.yml    PostgreSQL, backend and frontend services
 ```
@@ -359,4 +363,4 @@ All endpoints are served under `/api`. The complete, interactive reference is ge
 
 ## License
 
-This repository does not currently include a license file.
+FINORA is released under the [MIT License](LICENSE).
