@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.api import (
     alerts, assistant, auth, checkout, crossborder, dashboard, data, evals, paypal, paypal_demo, settings, simulations,
@@ -42,6 +43,12 @@ for r in (dashboard.router, transactions.router, simulations.router, settings.ro
           auth.router, checkout.router, subscriptions.router, assistant.router, alerts.router, crossborder.router,
           paypal_demo.router, stress.router, evals.router):
     app.include_router(r, prefix="/api")
+
+
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+def root():
+    # The API lives under /api; send visitors of the bare service URL to the interactive docs.
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/api/health", tags=["meta"])
