@@ -141,7 +141,7 @@ Final run, commit `c4cd1f2` (agent code identical to `fced06e`, where the run st
 **Reading it honestly.**
 - On paraphrases Groq beats the offline planner (71.4% vs 35.7% correct arguments), which is what the LLM is for.
   On wording the planner knows, both score 100%.
-- **Every final answer was grounded (100%).** That's guaranteed by construction: a rejected draft is replaced by engine output.
+- **Every final answer was grounded (100%).** That holds by design: a rejected draft is replaced by engine output.
 - **Fallbacks (15%)** were provider errors during the run (6 cases, clustered at the end, all multi-turn or late). The client
   had switched to the fallback model (`openai/gpt-oss-20b` shows usage), which also failed for those cases, so the offline
   planner answered (still correctly, where its wording allowed). Both models were healthy right after the run. This run did not
@@ -173,6 +173,6 @@ passed with correct figures when re-asked. The table above is from a later full 
 
 ## Test suite
 
-`pytest` (206 tests) covers the engine, parsers, PayPal flows (mocked HTTP and demo mode), the Groq client's retry/fallback
+`pytest` (207 tests) covers the engine, parsers, PayPal flows (mocked HTTP and demo mode), the Groq client's retry/fallback
 behaviour, the agent loop and trace, the guardrail (accept/reject cases plus regressions), the checkout-proposal tool (creates
 no order, flags unsafe options), the rate limit, and the landing demo storyline on dates across a full year.

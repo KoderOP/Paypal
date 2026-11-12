@@ -1,5 +1,9 @@
 # FINORA architecture
 
+FINORA has five layers: (1) data ingestion with recorded provenance, (2) a deterministic financial engine, (3) an AI agent that
+calls the engine as tools, (4) a grounding guardrail on every AI answer, and (5) a human-controlled PayPal checkout. The frontend
+opens on the landing page at `/`; the dashboard is at `/overview`.
+
 FINORA has three layers with hard boundaries: a **pure deterministic engine** that does all money arithmetic, an **agent**
 that decides which engine function to call and how to phrase the result, and **PayPal integrations** that read data and act
 on decisions only after explicit human confirmation.
@@ -85,7 +89,7 @@ offline mode and the safety net. Its accuracy on held-out paraphrases is measure
 |---|---|
 | OAuth 2.0 client credentials | server-to-server token (cached) |
 | Transaction Search (`/v1/reporting/transactions`) + balances | read-only sync; PayPal transaction id = idempotency key, so API syncs and CSV uploads de-duplicate |
-| Orders v2 | checkout with `PayPal-Request-Id` idempotency; Pay Later via the buyer's choice on PayPal's page |
+| Orders v2 | checkout with `PayPal-Request-Id` idempotency; whether Pay Later is offered is PayPal's decision on its approval page (FINORA has no PayPal financing integration) |
 | Subscriptions v1 | link, refresh, cancel, suspend, activate (each needs `confirm: true`) |
 | Log in with PayPal (OIDC) | optional identity; no feature requires it |
 
@@ -96,7 +100,7 @@ orders as history and marks captured ones `cleared_from_twin`.
 **The payment gate.** `POST /checkout/orders` needs `acknowledged: true`; the simulation is re-run server-side and
 snapshotted on the order. The buyer approves on PayPal, which redirects to `/checkout/return`. Then
 `POST /checkout/orders/{id}/capture` needs `confirm: true`. After capture, a full payment is recorded as a PayPal transaction
-(capture id as external id) and Pay Later as one dated obligation per instalment, so the forecast reflects the decision.
+(capture id as external id) and Pay Later as one dated obligation per instalment, a simulated schedule from FINORA's illustrative terms, so the forecast reflects the decision.
 
 **Demo mode.** With no credentials, `PAYPAL_DEMO_MODE=true` serves an in-process stand-in for these endpoints through the same
 client code, with FINORA-hosted buyer pages labelled "PayPal demo mode · no real money".
@@ -168,6 +172,7 @@ All endpoints are prefixed with `/api`. Interactive docs are at `http://localhos
 | GET / POST | `/assistant/status` · `/assistant/chat` | AI assistant (Groq tool calling + grounding guardrail + trace; deterministic planner without a key) |
 | GET / PUT | `/settings` | Read settings / update `name` and/or `safety_buffer` |
 | GET | `/evals` | Committed evaluation results (read-only) |
+| GET | `/demo-preview` | Engine output (payment comparison) for the fictional sample profile, computed in memory; reads and writes no data. Used by the landing page |
 | POST | `/data/sample` | `{file_id, replace}`: load the fictional sample profile, generated server-side, stored as `origin=sample` |
 | POST | `/integrations/paypal/check-auth` | Request a PayPal OAuth token now; proves the credentials work, reads nothing |
 
